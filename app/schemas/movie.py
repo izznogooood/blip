@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from app.schemas.radarr import RadarrStatus
+
 # Poster image base URL. w500 is a good balance of quality and size for cards.
 TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
 
@@ -13,6 +15,13 @@ class Movie(BaseModel):
     rating: float | None = None
     poster_url: str | None = None
     overview: str = ""
+    # Set by RadarrService.annotate() when the movie exists in Radarr; None
+    # means it is not in the library (and is therefore addable).
+    radarr_status: RadarrStatus | None = None
+
+    @property
+    def in_radarr(self) -> bool:
+        return self.radarr_status is not None
 
     @classmethod
     def from_tmdb(cls, data: dict) -> "Movie":

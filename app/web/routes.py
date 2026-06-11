@@ -5,15 +5,20 @@ import httpx
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
 
+from app.clients.radarr_client import RadarrClient
 from app.clients.tmdb_client import TMDBClient
 from app.core.config import settings
+from app.core.database import get_session
+from app.services.cache_service import CacheService
 from app.services.movie_service import (
     LIST_DESCRIPTIONS,
     MOVIE_LISTS,
     MovieService,
     UnknownListError,
 )
+from app.services.radarr_service import RadarrService
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +28,24 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 router = APIRouter()
 
 
-def get_movie_service() -> MovieService | None:
+def get_movie_service(
+    session: Session = Depends(get_session),
+) -> MovieService | None:
     """Build a MovieService from configured settings, or None if unconfigured."""
     if not settings.tmdb_api_key:
         return None
-    return MovieService(TMDBClient(settings.tmdb_api_key))
+    return MovieService(
+        TMDBClient(settings.tmdb_api_key), cache=CacheService(session)
+    )
+
+
+def get_radarr_service() -> RadarrService | None:
+    """Build a RadarrService from configured settings, or None if unconfigured."""
+    if not settings.radarr_base_url or not settings.radarr_api_key:
+        return None
+    return RadarrService(
+        RadarrClient(settings.radarr_base_url, settings.radarr_api_key)
+    )
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -37,12 +55,35 @@ def index(request: Request) -> HTMLResponse:
     )
 
 
+def _annotate_radarr(
+    movies: list, radarr: RadarrService | None, *, list_id: str, page: int
+) -> None:
+    """Merge Radarr status onto movies, failing soft if Radarr is unavailable.
+
+    A Radarr outage must not break browsing: on error the movies keep their
+    default (no status) and the grid still renders.
+    """
+    if radarr is None:
+        return
+    try:
+        radarr.annotate(movies)
+    except httpx.HTTPError as exc:
+        logger.warning(
+            "Radarr lookup failed: %s (list=%s page=%s) — cards shown without status",
+            type(exc).__name__,
+            list_id,
+            page,
+        )
+
+
 @router.get("/movies", response_class=HTMLResponse)
 def movies(
     request: Request,
     list: str = "in_theaters",
     page: int = 1,
+    refresh: bool = False,
     service: MovieService | None = Depends(get_movie_service),
+    radarr: RadarrService | None = Depends(get_radarr_service),
 ) -> HTMLResponse:
     """Return a movie grid partial for the given list (HTMX endpoint).
 
@@ -63,7 +104,8 @@ def movies(
         return templates.TemplateResponse(request, "partials/movie_grid.html", context)
 
     try:
-        page_data = service.movies(list, page=page)
+        page_data = service.movies(list, page=page, force_refresh=refresh)
+        _annotate_radarr(page_data.movies, radarr, list_id=list, page=page)
         context["movies"] = page_data.movies
         context["page_data"] = page_data
         template = (

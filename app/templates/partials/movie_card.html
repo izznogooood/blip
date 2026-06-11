@@ -1,16 +1,30 @@
+{# Status badge colours per RadarrStatus (PRD §20). #}
+{% set status_badges = {
+  "Downloaded": "bg-green-600 text-green-50",
+  "Missing": "bg-amber-500 text-amber-950",
+  "Unmonitored": "bg-slate-500 text-slate-50",
+  "Unknown": "bg-slate-600 text-slate-200",
+} %}
 <article class="bg-slate-800 rounded-lg overflow-hidden shadow ring-1 ring-slate-700/50 flex flex-col">
-  <div class="aspect-[2/3] bg-slate-700">
+  <div class="relative aspect-[2/3] bg-slate-700">
     {% if movie.poster_url %}
     <img
       src="{{ movie.poster_url }}"
       alt="Poster for {{ movie.title }}"
       loading="lazy"
-      class="h-full w-full object-cover"
+      class="h-full w-full object-cover{% if movie.in_radarr %} grayscale opacity-60{% endif %}"
     />
     {% else %}
     <div class="h-full w-full flex items-center justify-center text-slate-500 text-sm px-2 text-center">
       No poster
     </div>
+    {% endif %}
+    {% if movie.radarr_status %}
+    <span
+      class="absolute top-2 left-2 rounded px-1.5 py-0.5 text-xs font-semibold {{ status_badges.get(movie.radarr_status.value, 'bg-slate-600 text-slate-200') }}"
+    >
+      {{ movie.radarr_status.value }}
+    </span>
     {% endif %}
   </div>
 
@@ -24,5 +38,11 @@
       </span>
       {% endif %}
     </div>
+
+    {# Action area. Add / Add + Search buttons arrive in Milestone 7; for movies
+       already in Radarr the actions are replaced by this static indicator. #}
+    {% if movie.in_radarr %}
+    <p class="mt-1 text-xs font-medium text-slate-400">Already in Radarr</p>
+    {% endif %}
   </div>
 </article>

@@ -13,8 +13,8 @@ Each milestone should leave the app runnable.
 | 1. Project skeleton | ✅ Complete |
 | 2. TMDB list rendering | ✅ Complete |
 | 3. List tabs and Load More | ✅ Complete |
-| 4. SQLite caching | ⬜ Not started |
-| 5. Radarr read integration | ⬜ Not started |
+| 4. SQLite caching | ✅ Complete |
+| 5. Radarr read integration | ✅ Complete |
 | 6. Settings | ⬜ Not started |
 | 7. Add and Add + Search | ⬜ Not started |
 | 8. Synopsis modal and trailer | ⬜ Not started |
@@ -120,50 +120,62 @@ Notes for later milestones:
 - `LIST_DESCRIPTIONS` (`app/services/movie_service.py`) maps a list id → optional caption rendered above its grid; the route passes it as `caption`. Reusable for any future list needing an explainer.
 - No caching yet — each list/page load hits TMDB live. Note Top Rated fans out to ~4 source calls per load, so it benefits most from Milestone 4 caching.
 
-## Milestone 4: SQLite caching
+## Milestone 4: SQLite caching — ✅ Complete
 
 Goal: Cache TMDB responses.
 
 Tasks:
 
-1. Add SQLite models for cached API responses.
-2. Cache list responses for 1 hour.
-3. Cache movie details/trailers for 24 hours.
-4. Add manual refresh action to bypass cache.
+1. ✅ Add SQLite models for cached API responses. (`CachedResponse`, `app/models/cache.py`.)
+2. ✅ Cache list responses for 1 hour. (`LIST_CACHE_TTL = 3600`.)
+3. ✅ Cache movie details/trailers for 24 hours. (`DETAILS_CACHE_TTL = 86400` defined; wiring deferred to Milestone 8, where detail/trailer fetching is introduced.)
+4. ✅ Add manual refresh action to bypass cache. (Per-list **Refresh** button → `?refresh=true` → `force_refresh`.)
 
 Acceptance criteria:
 
-- Repeated list loads use cache.
-- Manual refresh fetches fresh data.
-- Tests cover cache hit/miss behavior.
+- ✅ Repeated list loads use cache. (`MovieService` reads/writes via `CacheService`; verified by call-counting tests.)
+- ✅ Manual refresh fetches fresh data. (`force_refresh=True` bypasses the read and rewrites the entry; propagated through Top Rated to its source lists.)
+- ✅ Tests cover cache hit/miss behavior. (`tests/test_cache_service.py`: miss/round-trip/expiry/overwrite + service hit/miss/refresh/expiry/no-cache. Full suite passes.)
 
-## Milestone 5: Radarr read integration
+Notes for later milestones:
+
+- `CacheService` (`app/services/cache_service.py`) is a generic TTL cache over the `cached_responses` table: `get(key)`, `set(key, value, ttl)`. `expires_at` is stored as a Unix epoch float (tz-free, avoids SQLite datetime quirks); the clock is injectable (`clock=`) for deterministic expiry tests. Expired entries are pruned on read.
+- Caching is wired in `MovieService` via `_fetch_list` + `_cached`, keyed `tmdb:list:{list_id}:{page}`. The cache is **optional** (`MovieService(client, cache=None)` still works — every load hits the client), so existing tests that construct a bare service are unaffected.
+- The route builds `CacheService` from the request-scoped `get_session` dependency inside `get_movie_service`. Tests that override `get_movie_service` bypass the DB entirely.
+- `init_db()` now imports `app.models.cache` so the table is registered on `Base.metadata` before `create_all`. Add future models to the same import site (or an `app/models/__init__.py` aggregate) so they are created at startup.
+- Only list payloads are cached today. Detail/trailer caching (Milestone 8) should reuse `CacheService` with `DETAILS_CACHE_TTL` and a `tmdb:detail:{id}` key.
+
+## Milestone 5: Radarr read integration — ✅ Complete
 
 Goal: Show Radarr status on cards.
 
 Tasks:
 
-1. Add Radarr config:
-   - base URL
-   - API key
-2. Create `RadarrClient`.
-3. Fetch Radarr movies.
-4. Fetch quality profiles.
-5. Fetch root folders.
-6. Map Radarr movie data to internal status:
-   - Missing
-   - Downloaded
-   - Unmonitored
-   - Unknown
-7. Merge Radarr status into movie cards.
-8. Grey/desaturate cards already in Radarr.
+1. ✅ Add Radarr config (base URL, API key). (Already on `Settings`; no change needed — env fallback per ADR-004.)
+2. ✅ Create `RadarrClient`. (`app/clients/radarr_client.py`, HTTP-only, `X-Api-Key` header.)
+3. ✅ Fetch Radarr movies. (`RadarrClient.movies()` → `/api/v3/movie`.)
+4. ✅ Fetch quality profiles. (`/api/v3/qualityprofile` → `QualityProfile`.)
+5. ✅ Fetch root folders. (`/api/v3/rootfolder` → `RootFolder`.)
+6. ✅ Map Radarr movie data to internal status. (`status_from_radarr`, see ADR-010.)
+7. ✅ Merge Radarr status into movie cards. (`RadarrService.annotate()` from the route, fail-soft on Radarr outage.)
+8. ✅ Grey/desaturate cards already in Radarr. (`grayscale opacity-60` on existing posters + status badge.)
 
 Acceptance criteria:
 
-- Cards show Radarr status.
-- Existing Radarr movies are visually marked.
-- Add buttons are disabled/replaced for existing movies.
-- Tests cover Radarr status mapping.
+- ✅ Cards show Radarr status. (Colour-coded badge per status, PRD §20.)
+- ✅ Existing Radarr movies are visually marked. (Desaturated poster + "Already in Radarr" indicator.)
+- ✅ Add buttons are disabled/replaced for existing movies. (Add buttons don't exist until M7; existing movies render the static "Already in Radarr" indicator in the action area, so M7 only needs to render buttons in the `else` branch.)
+- ✅ Tests cover Radarr status mapping. (`tests/test_radarr_status.py`: status precedence, id-map dedupe/skip, annotate, profile/folder mapping, route badge+grayscale, Radarr-unconfigured render. Full suite passes.)
+
+Notes for later milestones:
+
+- `RadarrClient` (`app/clients/radarr_client.py`) is HTTP-only and returns raw JSON lists; the API key goes in the `X-Api-Key` header (never a URL/log). Injectable `transport` for tests.
+- `RadarrService` (`app/services/radarr_service.py`): `statuses_by_tmdb_id()` (one library call → `{tmdbId: RadarrStatus}`), `annotate(movies)` (mutates `Movie.radarr_status`), plus `quality_profiles()`/`root_folders()` ready for **M6 settings** and **M7 add**.
+- Status precedence lives in `status_from_radarr` (`app/schemas/radarr.py`): file → Downloaded; else unmonitored → Unmonitored; else monitored → Missing; else Unknown. See ADR-010.
+- `Movie` gained `radarr_status: RadarrStatus | None` and an `in_radarr` property. `None` = not in library = addable (the M7 Add buttons key off this).
+- Route builds Radarr from `get_radarr_service` (returns `None` if base URL or key is unset → cards render with no status). Annotation is wrapped in `_annotate_radarr`, which logs and continues on `httpx.HTTPError` so a Radarr outage never breaks browsing.
+- **No Radarr caching yet** — the library is fetched once per `/movies` request. If this proves heavy, wrap it with `CacheService` (a short TTL) like the TMDB lists; left out for now per KISS.
+- **Env reminder:** `RADARR_BASE_URL` must be set for live status (LAN IP:7878, not `localhost`, since Blip runs in Docker).
 
 ## Milestone 6: Settings
 

@@ -3,9 +3,22 @@
   {{ error }}
 </div>
 {% else %}
-{% if caption %}
-<p class="text-sm text-slate-400 mb-4">{{ caption }}</p>
-{% endif %}
+<div class="flex items-start justify-between gap-4 mb-4">
+  {% if caption %}
+  <p class="text-sm text-slate-400">{{ caption }}</p>
+  {% else %}
+  <span></span>
+  {% endif %}
+  {# Manual refresh: reloads page 1 with refresh=true, bypassing the cache. #}
+  <button
+    class="shrink-0 rounded-md bg-slate-800 hover:bg-slate-700 px-3 py-1.5 text-sm font-medium text-slate-300"
+    hx-get="/movies?list={{ list_id }}&refresh=true"
+    hx-target="#movie-list"
+    hx-swap="innerHTML"
+  >
+    Refresh
+  </button>
+</div>
 {% if not movies %}
 <div class="text-slate-400 py-8 text-center">No movies to show.</div>
 {% else %}

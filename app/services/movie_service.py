@@ -1,7 +1,9 @@
+from collections.abc import Callable
 from datetime import date, timedelta
 
 from app.clients.tmdb_client import TMDBClient
 from app.schemas.movie import Movie, MoviePage
+from app.services.cache_service import LIST_CACHE_TTL, CacheService
 
 # The "Top Rated" list is not a TMDB chart — it is the highest-rated movies
 # across all of Blip's *other* lists (see ADR-008). Its id is referenced by the
@@ -49,28 +51,56 @@ class MovieService:
     :class:`MoviePage` schema. Future milestones will merge Radarr status here.
     """
 
-    def __init__(self, client: TMDBClient) -> None:
+    def __init__(self, client: TMDBClient, *, cache: CacheService | None = None) -> None:
         self._client = client
+        self._cache = cache
 
-    def movies(self, list_id: str, page: int = 1) -> MoviePage:
-        """Fetch one page of the given list, mapped to a :class:`MoviePage`."""
+    def movies(
+        self, list_id: str, page: int = 1, *, force_refresh: bool = False
+    ) -> MoviePage:
+        """Fetch one page of the given list, mapped to a :class:`MoviePage`.
+
+        Responses are served from the cache when available; ``force_refresh``
+        bypasses the cache and refreshes the stored payload (used by the manual
+        per-list refresh action).
+        """
         if list_id == TOP_RATED_LIST_ID:
-            return self._top_rated()
+            return self._top_rated(force_refresh=force_refresh)
+        payload = self._fetch_list(list_id, page, force_refresh=force_refresh)
+        return MoviePage.from_tmdb(payload)
+
+    def _fetch_list(self, list_id: str, page: int, *, force_refresh: bool) -> dict:
+        """Return the raw TMDB payload for a (non-aggregate) list, via the cache."""
         if list_id == "in_theaters":
-            payload = self._client.now_playing(page=page)
+            fetch: Callable[[], dict] = lambda: self._client.now_playing(page=page)
         elif list_id == "upcoming_theatrical":
-            payload = self._client.upcoming(page=page)
+            fetch = lambda: self._client.upcoming(page=page)
         elif list_id == "new_at_home":
-            payload = self._client.discover(page=page, params=self._new_at_home_params())
+            fetch = lambda: self._client.discover(
+                page=page, params=self._new_at_home_params()
+            )
         elif list_id == "upcoming_at_home":
-            payload = self._client.discover(
+            fetch = lambda: self._client.discover(
                 page=page, params=self._upcoming_at_home_params()
             )
         else:
             raise UnknownListError(list_id)
-        return MoviePage.from_tmdb(payload)
+        return self._cached(f"tmdb:list:{list_id}:{page}", fetch, force_refresh)
 
-    def _top_rated(self) -> MoviePage:
+    def _cached(
+        self, key: str, fetch: Callable[[], dict], force_refresh: bool
+    ) -> dict:
+        """Return ``fetch()``'s result, reading/writing the list cache if present."""
+        if self._cache is not None and not force_refresh:
+            cached = self._cache.get(key)
+            if cached is not None:
+                return cached
+        payload = fetch()
+        if self._cache is not None:
+            self._cache.set(key, payload, LIST_CACHE_TTL)
+        return payload
+
+    def _top_rated(self, *, force_refresh: bool = False) -> MoviePage:
         """Assemble the highest-rated movies across all of Blip's other lists.
 
         Pulls page 1 of every other list in ``MOVIE_LISTS``, dedupes by movie id,
@@ -86,7 +116,8 @@ class MovieService:
 
         unique: dict[int, Movie] = {}
         for source_id in source_ids:
-            for movie in self.movies(source_id, page=1).movies:
+            page = self.movies(source_id, page=1, force_refresh=force_refresh)
+            for movie in page.movies:
                 unique.setdefault(movie.id, movie)
 
         ranked = sorted(unique.values(), key=lambda m: m.rating or 0.0, reverse=True)

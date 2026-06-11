@@ -73,3 +73,31 @@ Map the five v1 lists to TMDB endpoints as follows:
 Rationale: the theatrical lists have first-class TMDB endpoints. For "at home" there is no dedicated endpoint, so `/discover/movie` with release-type filtering is the standard approach and is sufficient for discovery; per-platform watch-provider data is explicitly out of scope for v1 (PRD §8). Date windows keep the lists relevant without storing state. The aggregate Top Rated keeps a single source of truth (the list registry) and stays correct as lists are added.
 
 Resolves PRD §25 open questions 1 and 2.
+
+## ADR-009: TMDB response caching — generic key-value table, epoch TTL
+
+Cache TMDB responses in a single generic `cached_responses` table (`key` text PK, `value` JSON text, `expires_at` Unix epoch float) accessed through a `CacheService` (`get`/`set`), rather than per-list typed tables.
+
+Decisions:
+
+- **One generic table, not per-endpoint tables.** A single `(key, value, expires_at)` shape serves list payloads now and detail/trailer payloads later (PRD §13's 1h / 24h TTLs are just different `ttl` arguments: `LIST_CACHE_TTL` / `DETAILS_CACHE_TTL`). Keys are namespaced strings, e.g. `tmdb:list:{list_id}:{page}`.
+- **Epoch float for expiry, not a `DateTime` column.** Avoids SQLite's naive/aware datetime serialisation pitfalls and makes expiry a trivial tz-free numeric comparison. The clock is injectable so expiry is tested without sleeping.
+- **Cache is an optional dependency of `MovieService`.** Passing `cache=None` falls back to live calls; this keeps the service unit-testable without a DB and leaves existing tests untouched. The real cache is built from the request-scoped session in the `get_movie_service` route dependency.
+- **Manual refresh = `force_refresh` bypass.** A per-list Refresh button issues `?refresh=true`, which skips the cache read and rewrites the entry. For Top Rated, refresh propagates to each aggregated source list.
+- **Expired-on-read pruning, no background sweeper.** Stale rows are deleted when next read (KISS, ADR-005); a scheduled cleaner is unnecessary at v1 scale.
+
+Rationale: the generic table keeps the schema minimal while covering all v1 caching needs, and the optional-injection design preserves the typed, testable service boundaries from ADR-002/ADR-003.
+
+## ADR-010: Radarr read integration — status mapping and merge
+
+Read Radarr state through a `RadarrClient` (HTTP only) + `RadarrService` (logic), mirroring the TMDB client/service split (ADR-003).
+
+Decisions:
+
+- **Auth via `X-Api-Key` header**, not a query param, so the key never lands in a URL or log line (PRD §16).
+- **Status precedence** (`status_from_radarr`): `hasFile` → `Downloaded` (wins regardless of monitored flag); else `monitored == false` → `Unmonitored`; else `monitored == true` → `Missing`; else `Unknown`. A downloaded-but-unmonitored movie reads as `Downloaded` because the file is what the user cares about. Missing/ambiguous fields fall back to `Unknown` rather than raising.
+- **Match on `tmdbId`.** Blip's lists are TMDB-sourced, so the library is reduced to a `{tmdbId: RadarrStatus}` map; library entries without a `tmdbId` are skipped (unmatchable). `Movie.radarr_status is None` means "not in Radarr" and is the single signal both the desaturation/badge (M5) and the Add buttons (M7) key off.
+- **Merge in the route, fail-soft.** The route fetches the page, then `RadarrService.annotate()` mutates the movies in one library call. A Radarr `httpx.HTTPError` is logged and swallowed (`_annotate_radarr`) so an outage degrades to "no status shown" instead of a broken page (PRD §15). `RadarrService` is an *optional* dependency — `None` when base URL/key are unset — keeping `MovieService` and existing tests independent of Radarr.
+- **No Radarr caching in v1.** The library is fetched once per `/movies` request; a TTL cache (reusing `CacheService`) is deferred unless it proves heavy (KISS, ADR-005).
+
+`quality_profiles()` / `root_folders()` are exposed now (tasks 4–5) but consumed by the settings (M6) and add (M7) milestones.
