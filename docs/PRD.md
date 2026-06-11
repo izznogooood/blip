@@ -803,7 +803,7 @@ These should be resolved during implementation:
 2. Whether TMDB watch provider data is sufficient for at-home classification.
 3. Exact current Radarr API payload for adding a movie by TMDB ID.
 4. Best way to trigger search immediately after add in the current Radarr API.
-5. Whether SQLModel or SQLAlchemy 2.x should be used.
+5. ~~Whether SQLModel or SQLAlchemy 2.x should be used.~~ **Resolved: SQLAlchemy 2.x (see ADR-006).**
 6. Whether settings should be stored as key-value rows or a single settings row.
-7. Whether Tailwind should stay CDN-only for v1 or later move to a build step.
+7. ~~Whether Tailwind should stay CDN-only for v1 or later move to a build step.~~ **Resolved: CDN only for v1 (see ADR-007).**
 

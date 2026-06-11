@@ -1,0 +1,16 @@
+services:
+  blip:
+    build: .
+    ports:
+      - "${BLIP_PORT:-8080}:8080"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: sqlite:////app/data/blip.db
+    volumes:
+      - blip-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  blip-data:

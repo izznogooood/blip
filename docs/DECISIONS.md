@@ -37,3 +37,19 @@ SQLite data should live in a mounted Docker volume.
 ## ADR-005: KISS principle
 
 Do not introduce unnecessary abstractions, background workers, queues, frontend frameworks, auth systems, or plugin architectures in v1.
+
+## ADR-006: ORM choice — SQLAlchemy 2.x
+
+Use SQLAlchemy 2.x (with `DeclarativeBase` and typed `Session`) rather than SQLModel.
+
+Rationale: SQLAlchemy 2.x is the more standard and explicit option, aligns with ADR-002's preference for explicit, typed boundaries, and has a larger and more mature ecosystem. SQLModel's main benefit (less boilerplate) is marginal given the small number of models in v1.
+
+Resolves PRD §25 open question 5.
+
+## ADR-007: Tailwind delivery — CDN only for v1
+
+Use the Tailwind CSS CDN script. Do not introduce an npm/Vite build step for CSS in v1.
+
+Rationale: keeps the project free of a JavaScript build pipeline (ADR-001) and matches the KISS principle. A build step can be revisited post-v1 if bundle size or purging becomes a concern.
+
+Resolves PRD §25 open question 7.

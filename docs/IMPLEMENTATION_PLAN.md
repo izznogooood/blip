@@ -6,7 +6,21 @@ Do not implement all features at once.
 
 Each milestone should leave the app runnable.
 
-## Milestone 1: Project skeleton
+## Progress
+
+| Milestone | Status |
+|---|---|
+| 1. Project skeleton | ✅ Complete |
+| 2. TMDB list rendering | ⬜ Not started |
+| 3. List tabs and Load More | ⬜ Not started |
+| 4. SQLite caching | ⬜ Not started |
+| 5. Radarr read integration | ⬜ Not started |
+| 6. Settings | ⬜ Not started |
+| 7. Add and Add + Search | ⬜ Not started |
+| 8. Synopsis modal and trailer | ⬜ Not started |
+| 9. Polish and tests | ⬜ Not started |
+
+## Milestone 1: Project skeleton — ✅ Complete
 
 Goal: A runnable FastAPI app in Docker.
 
@@ -30,10 +44,16 @@ Tasks:
 
 Acceptance criteria:
 
-- `docker compose up` starts the app.
-- Visiting `/` shows a Blip landing page.
-- `/health` returns OK.
-- `pytest` runs successfully.
+- ✅ `docker compose up` starts the app. (`docker compose config` validated; image not built end-to-end.)
+- ✅ Visiting `/` shows a Blip landing page.
+- ✅ `/health` returns OK.
+- ✅ `pytest` runs successfully. (2 passed)
+
+Notes for later milestones:
+
+- ORM is SQLAlchemy 2.x (ADR-006); `Base` + `init_db()` + `get_session()` live in `app/core/database.py`.
+- Env-based config is in `app/core/config.py` (`Settings`); DB-stored settings will layer on top in Milestone 6.
+- App is wired via a `create_app()` factory in `app/main.py`; `init_db()` runs in the FastAPI `lifespan` startup.
 
 ## Milestone 2: TMDB list rendering
 
