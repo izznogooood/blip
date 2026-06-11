@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Settings · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-xl font-semibold">Settings</h1>
+    <a href="/" class="text-sm text-slate-400 hover:text-slate-200">← Back</a>
+  </div>
+
+  {% if saved %}
+  <div class="mb-6 rounded-md border border-emerald-700 bg-emerald-900/40 px-4 py-3 text-sm text-emerald-200">
+    Settings saved.
+  </div>
+  {% endif %}
+
+  <form method="post" action="/settings" class="space-y-6">
+    {# --- TMDB --- #}
+    <div>
+      <label class="block text-sm font-medium text-slate-300 mb-1">TMDB API key</label>
+      <input
+        type="password"
+        name="tmdb_api_key"
+        autocomplete="off"
+        placeholder="{% if row and row.tmdb_api_key %}saved — leave blank to keep{% elif resolved.tmdb_api_key %}set via environment — leave blank to keep{% else %}not set{% endif %}"
+        class="w-full rounded-md bg-slate-800 border border-slate-700 px-3 py-2 text-sm"
+      />
+    </div>
+
+    {# --- Radarr connection --- #}
+    <div>
+      <label class="block text-sm font-medium text-slate-300 mb-1">Radarr base URL</label>
+      <input
+        type="text"
+        name="radarr_base_url"
+        value="{{ row.radarr_base_url if row and row.radarr_base_url else '' }}"
+        placeholder="{% if resolved.radarr_base_url and not (row and row.radarr_base_url) %}{{ resolved.radarr_base_url }} (from environment){% else %}http://192.168.1.50:7878{% endif %}"
+        class="w-full rounded-md bg-slate-800 border border-slate-700 px-3 py-2 text-sm"
+      />
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-slate-300 mb-1">Radarr API key</label>
+      <input
+        type="password"
+        name="radarr_api_key"
+        autocomplete="off"
+        placeholder="{% if row and row.radarr_api_key %}saved — leave blank to keep{% elif resolved.radarr_api_key %}set via environment — leave blank to keep{% else %}not set{% endif %}"
+        class="w-full rounded-md bg-slate-800 border border-slate-700 px-3 py-2 text-sm"
+      />
+    </div>
+
+    {# --- Radarr defaults (populated from live Radarr) --- #}
+    <div class="rounded-md border border-slate-800 p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-slate-200">Radarr defaults</h2>
+        <button
+          type="button"
+          hx-get="/settings/radarr-options"
+          hx-target="#radarr-options"
+          hx-swap="innerHTML"
+          hx-include="[name='radarr_base_url'],[name='radarr_api_key']"
+          class="rounded-md bg-slate-700 px-2.5 py-1 text-xs font-medium hover:bg-slate-600"
+        >
+          Reload from Radarr
+        </button>
+      </div>
+
+      <div
+        id="radarr-options"
+        hx-get="/settings/radarr-options"
+        hx-trigger="load"
+        hx-swap="innerHTML"
+        hx-include="[name='radarr_base_url'],[name='radarr_api_key']"
+      >
+        {% include "partials/settings_radarr_options.html" %}
+      </div>
+
+      <div class="mt-4">
+        <label class="block text-sm font-medium text-slate-300 mb-1">
+          Default minimum availability
+        </label>
+        <select
+          name="radarr_default_minimum_availability"
+          class="w-full rounded-md bg-slate-800 border border-slate-700 px-3 py-2 text-sm"
+        >
+          {% for option in minimum_availability_options %}
+          <option
+            value="{{ option }}"
+            {% if option == resolved.radarr_default_minimum_availability %}selected{% endif %}
+          >
+            {{ option }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <button
+      type="submit"
+      class="rounded-md bg-slate-100 text-slate-900 px-4 py-2 text-sm font-semibold hover:bg-white"
+    >
+      Save settings
+    </button>
+  </form>
+</div>
+{% endblock %}

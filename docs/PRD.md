@@ -804,6 +804,6 @@ These should be resolved during implementation:
 3. Exact current Radarr API payload for adding a movie by TMDB ID.
 4. Best way to trigger search immediately after add in the current Radarr API.
 5. ~~Whether SQLModel or SQLAlchemy 2.x should be used.~~ **Resolved: SQLAlchemy 2.x (see ADR-006).**
-6. Whether settings should be stored as key-value rows or a single settings row.
+6. ~~Whether settings should be stored as key-value rows or a single settings row.~~ **Resolved: a single typed settings row with environment-variable fallback (see ADR-011).**
 7. ~~Whether Tailwind should stay CDN-only for v1 or later move to a build step.~~ **Resolved: CDN only for v1 (see ADR-007).**
 

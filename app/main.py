@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.database import init_db
 from app.web.routes import router
+from app.web.settings_routes import router as settings_router
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
@@ -20,6 +21,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Blip", lifespan=lifespan)
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     app.include_router(router)
+    app.include_router(settings_router)
     return app
 
 

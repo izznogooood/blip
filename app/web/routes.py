@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 
 from app.clients.radarr_client import RadarrClient
 from app.clients.tmdb_client import TMDBClient
-from app.core.config import settings
 from app.core.database import get_session
 from app.services.cache_service import CacheService
 from app.services.movie_service import (
@@ -19,6 +18,7 @@ from app.services.movie_service import (
     UnknownListError,
 )
 from app.services.radarr_service import RadarrService
+from app.services.settings_service import SettingsService
 
 logger = logging.getLogger(__name__)
 
@@ -31,20 +31,28 @@ router = APIRouter()
 def get_movie_service(
     session: Session = Depends(get_session),
 ) -> MovieService | None:
-    """Build a MovieService from configured settings, or None if unconfigured."""
-    if not settings.tmdb_api_key:
+    """Build a MovieService from resolved settings, or None if unconfigured.
+
+    Settings resolve DB-stored values over environment fallbacks (ADR-011), so
+    a TMDB key entered in the UI takes effect without a restart.
+    """
+    resolved = SettingsService(session).resolve()
+    if not resolved.tmdb_api_key:
         return None
     return MovieService(
-        TMDBClient(settings.tmdb_api_key), cache=CacheService(session)
+        TMDBClient(resolved.tmdb_api_key), cache=CacheService(session)
     )
 
 
-def get_radarr_service() -> RadarrService | None:
-    """Build a RadarrService from configured settings, or None if unconfigured."""
-    if not settings.radarr_base_url or not settings.radarr_api_key:
+def get_radarr_service(
+    session: Session = Depends(get_session),
+) -> RadarrService | None:
+    """Build a RadarrService from resolved settings, or None if unconfigured."""
+    resolved = SettingsService(session).resolve()
+    if not resolved.radarr_configured:
         return None
     return RadarrService(
-        RadarrClient(settings.radarr_base_url, settings.radarr_api_key)
+        RadarrClient(resolved.radarr_base_url, resolved.radarr_api_key)
     )
 
 

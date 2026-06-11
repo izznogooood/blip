@@ -15,7 +15,7 @@ Each milestone should leave the app runnable.
 | 3. List tabs and Load More | ✅ Complete |
 | 4. SQLite caching | ✅ Complete |
 | 5. Radarr read integration | ✅ Complete |
-| 6. Settings | ⬜ Not started |
+| 6. Settings | ✅ Complete |
 | 7. Add and Add + Search | ⬜ Not started |
 | 8. Synopsis modal and trailer | ⬜ Not started |
 | 9. Polish and tests | ⬜ Not started |
@@ -177,29 +177,30 @@ Notes for later milestones:
 - **No Radarr caching yet** — the library is fetched once per `/movies` request. If this proves heavy, wrap it with `CacheService` (a short TTL) like the TMDB lists; left out for now per KISS.
 - **Env reminder:** `RADARR_BASE_URL` must be set for live status (LAN IP:7878, not `localhost`, since Blip runs in Docker).
 
-## Milestone 6: Settings
+## Milestone 6: Settings — ✅ Complete
 
 Goal: Configure Radarr defaults through the app.
 
 Tasks:
 
-1. Add settings storage in SQLite.
-2. Add settings page/modal.
-3. Allow setting:
-   - TMDB API key
-   - Radarr base URL
-   - Radarr API key
-   - default root folder
-   - default quality profile
-   - default minimum availability
-4. Fetch root folders and quality profiles from Radarr.
-5. Provide env fallback when settings are missing.
+1. ✅ Add settings storage in SQLite. (Single typed row `app_settings`, `app/models/settings.py`; see ADR-011.)
+2. ✅ Add settings page/modal. (`templates/settings.html` at `GET /settings`; a header "Settings" link, not a modal.)
+3. ✅ Allow setting TMDB key, Radarr URL/key, default root folder, default quality profile, default minimum availability. (Form `POST /settings`.)
+4. ✅ Fetch root folders and quality profiles from Radarr. (HTMX partial `GET /settings/radarr-options` → live `RadarrService` call.)
+5. ✅ Provide env fallback when settings are missing. (`SettingsService.resolve()` overlays the DB row on `app/core/config.Settings`.)
 
 Acceptance criteria:
 
-- User can configure required settings in the UI.
-- Radarr dropdowns are populated from live Radarr API.
-- Env fallback works.
+- ✅ User can configure required settings in the UI. (Form persists via `SettingsService.save()`; PRG redirect to `?saved=true`.)
+- ✅ Radarr dropdowns are populated from live Radarr API. (`/settings/radarr-options` uses the form's current credentials, falling back to resolved settings; fail-soft to hidden inputs + notice when Radarr is unreachable.)
+- ✅ Env fallback works. (DB value wins when set; empty/unset falls through to env. `tests/test_settings_service.py`, `tests/test_settings_routes.py`; full suite 59 passed.)
+
+Notes for later milestones:
+
+- `SettingsService` (`app/services/settings_service.py`): `get_row()`, `resolve()` → `ResolvedSettings` (`app/schemas/settings.py`), `save(values)`. Env is injectable (`env=`) for deterministic tests. `ResolvedSettings.radarr_configured` is the single "is Radarr usable" check.
+- **M7 add** should read defaults via `SettingsService(session).resolve()` (root folder, quality profile id, `radarr_default_minimum_availability`) — the route dependencies `get_movie_service` / `get_radarr_service` already resolve through it, so a UI-entered key takes effect with no restart.
+- Secrets follow "leave blank to keep": never rendered into HTML, only written when entered. Keep this pattern for any future secret field.
+- `python-multipart` is now a runtime dependency (FastAPI form parsing). It's in `pyproject.toml`; `pip install .` (Dockerfile) picks it up.
 
 ## Milestone 7: Add and Add + Search
 

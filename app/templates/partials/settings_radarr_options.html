@@ -1,0 +1,42 @@
+{# Radarr root-folder / quality-profile dropdowns, populated from live Radarr.
+   Swapped into #radarr-options by HTMX. On error we keep the saved defaults as
+   hidden inputs so saving the rest of the form never wipes them. #}
+{% if error %}
+<p class="text-sm text-amber-400">{{ error }}</p>
+<input type="hidden" name="radarr_default_root_folder"
+       value="{{ current_root_folder or '' }}" />
+<input type="hidden" name="radarr_default_quality_profile_id"
+       value="{{ current_profile_id or '' }}" />
+{% else %}
+<div>
+  <label class="block text-sm font-medium text-slate-300 mb-1">
+    Default root folder
+  </label>
+  <select name="radarr_default_root_folder"
+          class="w-full rounded-md bg-slate-800 border border-slate-700 px-3 py-2 text-sm">
+    <option value="">— none —</option>
+    {% for folder in root_folders %}
+    <option value="{{ folder.path }}"
+            {% if folder.path == current_root_folder %}selected{% endif %}>
+      {{ folder.path }}
+    </option>
+    {% endfor %}
+  </select>
+</div>
+
+<div class="mt-4">
+  <label class="block text-sm font-medium text-slate-300 mb-1">
+    Default quality profile
+  </label>
+  <select name="radarr_default_quality_profile_id"
+          class="w-full rounded-md bg-slate-800 border border-slate-700 px-3 py-2 text-sm">
+    <option value="">— none —</option>
+    {% for profile in profiles %}
+    <option value="{{ profile.id }}"
+            {% if profile.id == current_profile_id %}selected{% endif %}>
+      {{ profile.name }}
+    </option>
+    {% endfor %}
+  </select>
+</div>
+{% endif %}

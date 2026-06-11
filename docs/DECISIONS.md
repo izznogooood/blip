@@ -101,3 +101,20 @@ Decisions:
 - **No Radarr caching in v1.** The library is fetched once per `/movies` request; a TTL cache (reusing `CacheService`) is deferred unless it proves heavy (KISS, ADR-005).
 
 `quality_profiles()` / `root_folders()` are exposed now (tasks 4–5) but consumed by the settings (M6) and add (M7) milestones.
+
+## ADR-011: Settings storage — single typed row, env fallback
+
+Store app settings in a single-row `app_settings` table (fixed `id = 1`) with one nullable, typed column per setting, accessed through a `SettingsService` that overlays the row on the environment-based `Settings` (`app/core/config.py`).
+
+Decisions:
+
+- **Single typed row, not key-value rows.** The set of settings is small and fixed (PRD §12), so explicit, typed columns (ADR-002) beat a generic `(key, value)` table: no per-row casting, no "unknown key" ambiguity, and the schema documents itself. Resolves PRD §25 open question 6.
+- **Resolution = DB over env, empty falls through.** `SettingsService.resolve()` returns a `ResolvedSettings` where each field is the DB value when set (non-`None`, non-empty) else the env value (ADR-004). The rest of the app reads only `ResolvedSettings`, so callers never know or care where a value came from. The `get_movie_service` / `get_radarr_service` route dependencies now resolve through this, so a key entered in the UI takes effect without a restart.
+- **Secrets use "leave blank to keep".** API-key fields are never rendered back into HTML (PRD §16); the form shows only a placeholder hint (saved / from-env / not-set). On save, a blank secret means "unchanged" (the stored value is not wiped), so secrets are only written when actually entered.
+- **Save is a tolerant upsert.** `save()` applies only known fields, creating the row lazily on first write; empty strings are stored as `None` so a cleared field transparently falls back to env. Non-secret text fields (e.g. Radarr base URL) are prefilled from the DB row, with the env value shown as a placeholder.
+- **Radarr dropdowns are fetched live, fail-soft.** Root folders and quality profiles populate from a live Radarr call (`RadarrService.quality_profiles()` / `root_folders()`) via an HTMX partial (`GET /settings/radarr-options`) that uses the form's current credentials (falling back to resolved settings on first load). If Radarr is unset/unreachable the partial renders the saved defaults as hidden inputs and an inline notice, so the rest of the form still saves without wiping those defaults (PRD §15).
+- **`python-multipart` added** as a dependency — required by FastAPI to parse the `POST /settings` form body.
+
+Rationale: a typed single row keeps the schema minimal and self-documenting while the env fallback preserves the Docker-first deployment story (ADR-004); the resolve-everywhere design keeps the typed service boundaries from ADR-003 intact.
+
+Resolves PRD §25 open question 6.

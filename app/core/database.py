@@ -36,8 +36,8 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False
 
 def init_db() -> None:
     """Create database tables for all imported models."""
-    # Imported for its side effect: registering models on ``Base.metadata``.
-    from app.models import cache  # noqa: F401
+    # Imported for their side effect: registering models on ``Base.metadata``.
+    from app.models import cache, settings  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
 
