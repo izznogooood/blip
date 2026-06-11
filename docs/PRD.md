@@ -799,8 +799,8 @@ Blip v1 is complete when:
 
 These should be resolved during implementation:
 
-1. Exact TMDB endpoints to use for “New at Home” and “Upcoming at Home.”
-2. Whether TMDB watch provider data is sufficient for at-home classification.
+1. ~~Exact TMDB endpoints to use for “New at Home” and “Upcoming at Home.”~~ **Resolved: `/discover/movie` with `with_release_type=4|5` and a `release_date` window (see ADR-008).**
+2. ~~Whether TMDB watch provider data is sufficient for at-home classification.~~ **Resolved: not used in v1; at-home is approximated via digital/physical release type (see ADR-008).**
 3. Exact current Radarr API payload for adding a movie by TMDB ID.
 4. Best way to trigger search immediately after add in the current Radarr API.
 5. ~~Whether SQLModel or SQLAlchemy 2.x should be used.~~ **Resolved: SQLAlchemy 2.x (see ADR-006).**

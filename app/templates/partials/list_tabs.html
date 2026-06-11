@@ -1,0 +1,21 @@
+{# Top tab navigation. Alpine tracks the active tab for styling; HTMX loads the
+   selected list into #movie-list (page 1), which resets any loaded pages. #}
+<nav
+  class="flex flex-wrap gap-2 mb-6"
+  x-data="{ active: 'in_theaters' }"
+>
+  {% for id, label in lists %}
+  <button
+    @click="active = '{{ id }}'"
+    :class="active === '{{ id }}'
+      ? 'bg-slate-100 text-slate-900'
+      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'"
+    class="rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+    hx-get="/movies?list={{ id }}"
+    hx-target="#movie-list"
+    hx-swap="innerHTML"
+  >
+    {{ label }}
+  </button>
+  {% endfor %}
+</nav>

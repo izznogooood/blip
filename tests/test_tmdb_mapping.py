@@ -48,23 +48,34 @@ def test_from_tmdb_bad_release_date_is_none() -> None:
 
 
 class _StubClient:
+    """Returns the same payload for every list endpoint."""
+
     def __init__(self, payload: dict) -> None:
         self._payload = payload
 
     def now_playing(self, page: int = 1) -> dict:
         return self._payload
 
+    def upcoming(self, page: int = 1) -> dict:
+        return self._payload
+
+    def top_rated(self, page: int = 1) -> dict:
+        return self._payload
+
+    def discover(self, page: int = 1, params: dict | None = None) -> dict:
+        return self._payload
+
 
 def test_service_maps_results() -> None:
     payload = {"results": [{"id": 1, "title": "A"}, {"id": 2, "title": "B"}]}
     service = MovieService(_StubClient(payload))
-    movies = service.in_theaters()
-    assert [m.id for m in movies] == [1, 2]
+    page = service.movies("in_theaters")
+    assert [m.id for m in page.movies] == [1, 2]
 
 
 def test_service_handles_empty_results() -> None:
     service = MovieService(_StubClient({}))
-    assert service.in_theaters() == []
+    assert service.movies("in_theaters").movies == []
 
 
 def test_client_raises_on_http_error() -> None:

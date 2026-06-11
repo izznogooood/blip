@@ -33,6 +33,21 @@ class TMDBClient:
             "/movie/now_playing", {"page": page, "region": self._region}
         )
 
+    def upcoming(self, page: int = 1) -> dict:
+        """Return the TMDB "upcoming" (Upcoming Theatrical) payload for ``page``."""
+        return self._get(
+            "/movie/upcoming", {"page": page, "region": self._region}
+        )
+
+    def discover(self, page: int = 1, params: dict | None = None) -> dict:
+        """Return a TMDB ``/discover/movie`` payload for ``page``.
+
+        ``params`` carries discover-specific filters (release type, date range,
+        sort). The region is included so regional release-date filtering applies.
+        """
+        query = {"page": page, "region": self._region, **(params or {})}
+        return self._get("/discover/movie", query)
+
     def _get(self, path: str, params: dict) -> dict:
         query = {"api_key": self._api_key, **params}
         with httpx.Client(

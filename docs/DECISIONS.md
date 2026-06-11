@@ -53,3 +53,23 @@ Use the Tailwind CSS CDN script. Do not introduce an npm/Vite build step for CSS
 Rationale: keeps the project free of a JavaScript build pipeline (ADR-001) and matches the KISS principle. A build step can be revisited post-v1 if bundle size or purging becomes a concern.
 
 Resolves PRD §25 open question 7.
+
+## ADR-008: TMDB endpoints per movie list
+
+Map the five v1 lists to TMDB endpoints as follows:
+
+| List | Source | Notes |
+|---|---|---|
+| In Theaters | `/movie/now_playing` | region `US` |
+| Upcoming Theatrical | `/movie/upcoming` | region `US` |
+| New at Home | `/discover/movie` | `with_release_type=4\|5`, `release_date.gte=today-90d`, `release_date.lte=today`, `sort_by=primary_release_date.desc` |
+| Upcoming at Home | `/discover/movie` | `with_release_type=4\|5`, `release_date.gte=today`, `release_date.lte=today+180d`, `sort_by=primary_release_date.asc` |
+| Top Rated | aggregate of all other lists | page 1 of every other list, deduped by id, sorted by TMDB rating desc; single curated page, no Load More |
+
+"At home" availability is approximated as a digital (release type 4) or physical (5) release within the date window, paired with `region`. This avoids a separate watch-provider lookup per movie in v1.
+
+**Top Rated** is deliberately *not* TMDB's all-time `/movie/top_rated` chart. Blip's "Top Rated" means "the best-rated of the movies Blip is currently surfacing", so it is computed by unioning page 1 of every other entry in `MOVIE_LISTS` (anything except `top_rated` itself), deduping by movie id, and sorting by rating. This is driven entirely by the registry, so any list added in the future is automatically included with no extra wiring. Because the pool is bounded (page 1 of each source), Top Rated is presented as a single curated page with **no Load More**, and a short caption (`LIST_DESCRIPTIONS`) explains the scope so the bounded set is not mistaken for a truncated infinite feed.
+
+Rationale: the theatrical lists have first-class TMDB endpoints. For "at home" there is no dedicated endpoint, so `/discover/movie` with release-type filtering is the standard approach and is sufficient for discovery; per-platform watch-provider data is explicitly out of scope for v1 (PRD §8). Date windows keep the lists relevant without storing state. The aggregate Top Rated keeps a single source of truth (the list registry) and stays correct as lists are added.
+
+Resolves PRD §25 open questions 1 and 2.

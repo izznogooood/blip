@@ -1,0 +1,4 @@
+{# Append fragment for Load More (page > 1): new cards land in #movie-cards
+   via hx-swap="beforeend"; the load-more control replaces itself out-of-band. #}
+{% include "partials/_cards.html" %}
+{% with oob=True %}{% include "partials/_load_more.html" %}{% endwith %}

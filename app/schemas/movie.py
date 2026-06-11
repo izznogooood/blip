@@ -34,6 +34,27 @@ class Movie(BaseModel):
         )
 
 
+class MoviePage(BaseModel):
+    """A single page of mapped movies plus TMDB pagination metadata."""
+
+    movies: list[Movie]
+    page: int = 1
+    total_pages: int = 1
+
+    @property
+    def has_more(self) -> bool:
+        return self.page < self.total_pages
+
+    @classmethod
+    def from_tmdb(cls, payload: dict) -> "MoviePage":
+        results = payload.get("results") or []
+        return cls(
+            movies=[Movie.from_tmdb(item) for item in results],
+            page=payload.get("page") or 1,
+            total_pages=payload.get("total_pages") or 1,
+        )
+
+
 def _parse_year(release_date: str | None) -> int | None:
     """Extract the year from a TMDB ``YYYY-MM-DD`` release date."""
     if not release_date:

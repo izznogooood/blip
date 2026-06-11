@@ -12,7 +12,7 @@ Each milestone should leave the app runnable.
 |---|---|
 | 1. Project skeleton | ✅ Complete |
 | 2. TMDB list rendering | ✅ Complete |
-| 3. List tabs and Load More | ⬜ Not started |
+| 3. List tabs and Load More | ✅ Complete |
 | 4. SQLite caching | ⬜ Not started |
 | 5. Radarr read integration | ⬜ Not started |
 | 6. Settings | ⬜ Not started |
@@ -85,7 +85,7 @@ Notes for later milestones:
 - Route `GET /movies?list=<id>&page=<n>` returns the `partials/movie_grid.html` fragment for HTMX. Only `in_theaters` is wired; other list ids return a friendly error. The list-switching/tabs UI and Load More come in Milestone 3.
 - Service is built via the `get_movie_service` FastAPI dependency, which returns `None` when `tmdb_api_key` is unset (grid then shows "not configured"). Override this dependency in tests to avoid network.
 
-## Milestone 3: List tabs and Load More
+## Milestone 3: List tabs and Load More — ✅ Complete
 
 Goal: Add all v1 lists and incremental loading.
 
@@ -107,9 +107,18 @@ Tasks:
 
 Acceptance criteria:
 
-- Each list tab works.
-- Load More appends movies.
-- Switching tabs resets list state.
+- ✅ Each list tab works. (Five tabs from `MOVIE_LISTS`; four map to TMDB endpoints and "Top Rated" is an aggregate of the others — see ADR-008. Verified per-list dispatch and aggregation with stubs.)
+- ✅ Load More appends movies. (Page 1 returns the full `#movie-cards` grid; page > 1 returns an append fragment whose cards swap `beforeend` into the grid and whose Load More button swaps itself out-of-band. Driven by TMDB `total_pages` via `MoviePage.has_more`.)
+- ✅ Switching tabs resets list state. (Tab `hx-get` targets `#movie-list` with `innerHTML` and no page param → page 1, replacing all prior cards.)
+
+Notes for later milestones:
+
+- List registry is `MOVIE_LISTS` (id, label) in `app/services/movie_service.py`; `MovieService.movies(list_id, page)` dispatches and returns a `MoviePage` (`app/schemas/movie.py`). Unknown ids raise `UnknownListError`.
+- TMDB endpoints per list resolved in ADR-008 (resolves PRD §25 #1/#2). At-home lists use `/discover/movie` with `with_release_type=4|5` and a `release_date` window computed from `date.today()`.
+- Route `GET /movies?list=&page=` returns `partials/movie_grid.html` for page 1 (and all error cases) and `partials/movie_append.html` for page > 1. Card loop is shared via `partials/_cards.html`; the button lives in `partials/_load_more.html` (pass `oob=True` to swap it out-of-band).
+- "Top Rated" is **not** a TMDB endpoint — `MovieService._top_rated()` aggregates page 1 of every other list (anything in `MOVIE_LISTS` except itself), dedupes by id, sorts by rating, and returns a single page (`total_pages=1`) so it has **no Load More**. A caption from `LIST_DESCRIPTIONS` explains the bounded scope. Adding a list to the registry auto-feeds Top Rated. See ADR-008.
+- `LIST_DESCRIPTIONS` (`app/services/movie_service.py`) maps a list id → optional caption rendered above its grid; the route passes it as `caption`. Reusable for any future list needing an explainer.
+- No caching yet — each list/page load hits TMDB live. Note Top Rated fans out to ~4 source calls per load, so it benefits most from Milestone 4 caching.
 
 ## Milestone 4: SQLite caching
 
