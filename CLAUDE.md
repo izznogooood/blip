@@ -66,6 +66,12 @@ Before coding a milestone:
 5. Run relevant tests.
 6. Report files changed, commands run, and assumptions made.
 
+On completing a milestone:
+
+1. Update `docs/IMPLEMENTATION_PLAN.md`: mark the milestone complete in the progress table and check off its acceptance criteria (noting any caveats).
+2. If the work resolved an open question or made an architectural choice, record it in `docs/DECISIONS.md` (as an ADR) and update `docs/PRD.md` §25 accordingly.
+3. Keep these docs the source of truth so other sessions know the current state.
+
 ## Verification
 
 Prefer deterministic checks:
