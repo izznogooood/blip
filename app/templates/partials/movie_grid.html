@@ -1,0 +1,13 @@
+{% if error %}
+<div class="rounded-md border border-amber-700/50 bg-amber-900/20 px-4 py-3 text-amber-200">
+  {{ error }}
+</div>
+{% elif not movies %}
+<div class="text-slate-400 py-8 text-center">No movies to show.</div>
+{% else %}
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+  {% for movie in movies %}
+    {% include "partials/movie_card.html" %}
+  {% endfor %}
+</div>
+{% endif %}

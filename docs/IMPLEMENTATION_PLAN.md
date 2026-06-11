@@ -11,7 +11,7 @@ Each milestone should leave the app runnable.
 | Milestone | Status |
 |---|---|
 | 1. Project skeleton | ✅ Complete |
-| 2. TMDB list rendering | ⬜ Not started |
+| 2. TMDB list rendering | ✅ Complete |
 | 3. List tabs and Load More | ⬜ Not started |
 | 4. SQLite caching | ⬜ Not started |
 | 5. Radarr read integration | ⬜ Not started |
@@ -55,7 +55,7 @@ Notes for later milestones:
 - Env-based config is in `app/core/config.py` (`Settings`); DB-stored settings will layer on top in Milestone 6.
 - App is wired via a `create_app()` factory in `app/main.py`; `init_db()` runs in the FastAPI `lifespan` startup.
 
-## Milestone 2: TMDB list rendering
+## Milestone 2: TMDB list rendering — ✅ Complete
 
 Goal: Render one real TMDB movie list.
 
@@ -74,9 +74,16 @@ Tasks:
 
 Acceptance criteria:
 
-- `/` shows real movie cards from TMDB.
-- Missing poster data does not break rendering.
-- Code has basic tests for TMDB mapping.
+- ✅ `/` shows real movie cards from TMDB. (Grid loads via HTMX `GET /movies`; verified with a stubbed client. Live TMDB call requires `TMDB_API_KEY`.)
+- ✅ Missing poster data does not break rendering. (Card shows a "No poster" placeholder; mapping tolerates missing title/year/rating.)
+- ✅ Code has basic tests for TMDB mapping. (`tests/test_tmdb_mapping.py`, 8 tests; full suite 10 passed.)
+
+Notes for later milestones:
+
+- `TMDBClient` (`app/clients/tmdb_client.py`) is HTTP-only and returns raw JSON; it uses TMDB v3 (`api_key` query param) and `region="US"` for In Theaters. Currently exposes `now_playing()`.
+- TMDB → internal mapping lives in `Movie.from_tmdb()` (`app/schemas/movie.py`); business orchestration in `MovieService` (`app/services/movie_service.py`).
+- Route `GET /movies?list=<id>&page=<n>` returns the `partials/movie_grid.html` fragment for HTMX. Only `in_theaters` is wired; other list ids return a friendly error. The list-switching/tabs UI and Load More come in Milestone 3.
+- Service is built via the `get_movie_service` FastAPI dependency, which returns `None` when `tmdb_api_key` is unset (grid then shows "not configured"). Override this dependency in tests to avoid network.
 
 ## Milestone 3: List tabs and Load More
 

@@ -1,14 +1,16 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="text-center py-16" x-data="{ ready: true }">
-  <h1 class="text-4xl font-bold mb-4">Welcome to {{ app_name }}</h1>
-  <p class="text-slate-400 max-w-xl mx-auto">
-    A LAN-hosted movie discovery app for browsing lists and adding movies
-    directly to Radarr. The skeleton is up and running.
-  </p>
-  <p class="mt-6 text-sm text-slate-500" x-show="ready">
-    Milestone 1 complete — TMDB discovery lists arrive next.
-  </p>
+<section>
+  <h1 class="text-2xl font-bold mb-6">In Theaters</h1>
+
+  <div
+    id="movie-list"
+    hx-get="/movies?list=in_theaters"
+    hx-trigger="load"
+    hx-swap="innerHTML"
+  >
+    <div class="text-slate-400 py-8 text-center">Loading movies…</div>
+  </div>
 </section>
 {% endblock %}

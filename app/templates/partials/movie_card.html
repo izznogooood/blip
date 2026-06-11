@@ -1,0 +1,28 @@
+<article class="bg-slate-800 rounded-lg overflow-hidden shadow ring-1 ring-slate-700/50 flex flex-col">
+  <div class="aspect-[2/3] bg-slate-700">
+    {% if movie.poster_url %}
+    <img
+      src="{{ movie.poster_url }}"
+      alt="Poster for {{ movie.title }}"
+      loading="lazy"
+      class="h-full w-full object-cover"
+    />
+    {% else %}
+    <div class="h-full w-full flex items-center justify-center text-slate-500 text-sm px-2 text-center">
+      No poster
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="p-3 flex flex-col gap-1">
+    <h3 class="font-semibold leading-tight" title="{{ movie.title }}">{{ movie.title }}</h3>
+    <div class="flex items-center justify-between text-sm text-slate-400">
+      <span>{{ movie.year if movie.year else "—" }}</span>
+      {% if movie.rating %}
+      <span class="inline-flex items-center gap-1">
+        <span aria-hidden="true">★</span>{{ "%.1f"|format(movie.rating) }}
+      </span>
+      {% endif %}
+    </div>
+  </div>
+</article>
