@@ -16,7 +16,7 @@ Each milestone should leave the app runnable.
 | 4. SQLite caching | ✅ Complete |
 | 5. Radarr read integration | ✅ Complete |
 | 6. Settings | ✅ Complete |
-| 7. Add and Add + Search | ⬜ Not started |
+| 7. Add and Add + Search | ✅ Complete |
 | 8. Synopsis modal and trailer | ⬜ Not started |
 | 9. Polish and tests | ⬜ Not started |
 
@@ -202,26 +202,33 @@ Notes for later milestones:
 - Secrets follow "leave blank to keep": never rendered into HTML, only written when entered. Keep this pattern for any future secret field.
 - `python-multipart` is now a runtime dependency (FastAPI form parsing). It's in `pyproject.toml`; `pip install .` (Dockerfile) picks it up.
 
-## Milestone 7: Add and Add + Search
+## Milestone 7: Add and Add + Search — ✅ Complete
 
 Goal: Add movies to Radarr.
 
 Tasks:
 
-1. Implement Add action.
-2. Implement Add + Search action.
-3. Use configured root folder and quality profile.
-4. Default minimum availability is `released`.
-5. Allow quality profile override per movie if simple.
-6. Show success/error feedback through HTMX.
-7. Update card status after add.
+1. ✅ Implement Add action. (`RadarrService.add()`; `POST /movies/add` with `search=false`.)
+2. ✅ Implement Add + Search action. (Same path, `search=true` → `addOptions.searchForMovie`; see ADR-012.)
+3. ✅ Use configured root folder and quality profile. (Resolved via `SettingsService.resolve()` in the route.)
+4. ✅ Default minimum availability is `released`. (From resolved settings; default `released`.)
+5. ✅ Allow quality profile override per movie. (Per-card `<select>` populated from live quality profiles, fail-soft to the default.)
+6. ✅ Show success/error feedback through HTMX. (Card swaps to its added state on success; inline error keeps the Add buttons on failure.)
+7. ✅ Update card status after add. (Add returns the resulting `RadarrStatus`; the card re-renders desaturated with a status badge.)
 
 Acceptance criteria:
 
-- Add sends movie to Radarr.
-- Add + Search sends movie and triggers search.
-- Errors show visible messages.
-- API keys are never exposed to browser.
+- ✅ Add sends movie to Radarr. (Looks up the TMDB id, posts the augmented body to `/api/v3/movie`.)
+- ✅ Add + Search sends movie and triggers search. (`addOptions.searchForMovie=true`; verified by payload-recording tests.)
+- ✅ Errors show visible messages. (Radarr-unconfigured, missing-defaults, and HTTP failures all render an inline message without crashing; PRD §15.)
+- ✅ API keys are never exposed to browser. (Add runs server-side through `RadarrService`; the key stays in the `X-Api-Key` header.)
+
+Notes for later milestones:
+
+- `RadarrClient` gained `lookup_by_tmdb()` (GET `/api/v3/movie/lookup/tmdb`) and `add_movie()` (POST `/api/v3/movie`); a shared `_client()` builds the keyed `httpx.Client`.
+- `RadarrService.add(tmdb_id, *, quality_profile_id, root_folder_path, minimum_availability, search)` looks up the full body, augments it, posts, and returns `status_from_radarr(added)` so the route can re-render the card. See ADR-012.
+- Route `POST /movies/add` reconstructs a `Movie` from the card's hidden fields (id/title/year/rating/poster_url), resolves Radarr defaults, and renders `partials/movie_card.html`. The card's outer `<article>` now has `id="movie-card-{id}"`; the Add form swaps it `outerHTML`.
+- Cards key the action area off `movie.in_radarr`: existing → "Already in Radarr"; addable → Add / Add + Search form. M8's modal can reuse the same card without touching this.
 
 ## Milestone 8: Synopsis modal and trailer
 

@@ -118,3 +118,21 @@ Decisions:
 Rationale: a typed single row keeps the schema minimal and self-documenting while the env fallback preserves the Docker-first deployment story (ADR-004); the resolve-everywhere design keeps the typed service boundaries from ADR-003 intact.
 
 Resolves PRD §25 open question 6.
+
+## ADR-012: Radarr add — lookup-then-post, search via addOptions
+
+Add movies through `RadarrService.add()`, which fetches the full movie body from Radarr's lookup endpoint and posts it back augmented with Blip's add options.
+
+Decisions:
+
+- **Lookup, then post.** Radarr's `POST /api/v3/movie` requires the full movie record (title, year, images, titleSlug, …), not just a TMDB id. Rather than hand-build that body from TMDB data, Blip calls `GET /api/v3/movie/lookup/tmdb?tmdbId={id}` to get Radarr's own representation, then overlays `qualityProfileId`, `rootFolderPath`, `minimumAvailability`, `monitored=true`, and `addOptions`. This is the canonical Radarr add flow and is resilient to schema additions. Resolves PRD §25 open question 3.
+- **Search on add via `addOptions.searchForMovie`.** Add + Search sets `addOptions.searchForMovie=true` in the same add call rather than issuing a separate `/command` MoviesSearch request — one round-trip, no second failure mode, and atomic with the add. Resolves PRD §25 open question 4.
+- **Defaults from resolved settings, profile overridable per movie.** Root folder, quality profile, and minimum availability come from `SettingsService.resolve()` (DB over env, ADR-011). The card renders a per-movie quality-profile `<select>` populated from a live `quality_profiles()` call (fail-soft to an empty list → the configured default is used). Root folder is not overridable per movie (PRD §11 — rare need, kept simple).
+- **`add()` returns the resulting status.** It maps the created record through `status_from_radarr` (ADR-010), so the route re-renders the card in its new state (desaturated + status badge) with no extra Radarr call.
+- **Server-side only, fail-soft.** `POST /movies/add` runs entirely through `RadarrService`; the API key never leaves the `X-Api-Key` header (PRD §16). Radarr-unconfigured, missing-defaults, and `httpx.HTTPError` cases each render an inline error on the card while preserving the Add buttons for retry (PRD §15) — the page never crashes.
+
+Rationale: lookup-then-post is the reliable, standard Radarr integration; folding search into `addOptions` keeps Add + Search a single, atomic operation; returning the status keeps the HTMX card update a pure server render consistent with ADR-001/ADR-003.
+
+Resolves PRD §25 open questions 3 and 4.
+
+Resolves PRD §25 open question 6.

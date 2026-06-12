@@ -45,6 +45,35 @@ class RadarrService:
         for movie in movies:
             movie.radarr_status = statuses.get(movie.id)
 
+    def add(
+        self,
+        tmdb_id: int,
+        *,
+        quality_profile_id: int,
+        root_folder_path: str,
+        minimum_availability: str = "released",
+        search: bool = False,
+    ) -> RadarrStatus:
+        """Add a movie to Radarr and return its resulting status.
+
+        The full movie body is fetched from Radarr's lookup endpoint (which
+        supplies title, year, images, etc.) and augmented with Blip's add
+        options. ``search=True`` tells Radarr to search immediately on add via
+        ``addOptions.searchForMovie`` (Add + Search), resolving PRD §25 #3/#4.
+        """
+        payload = self._client.lookup_by_tmdb(tmdb_id)
+        payload.update(
+            {
+                "qualityProfileId": quality_profile_id,
+                "rootFolderPath": root_folder_path,
+                "minimumAvailability": minimum_availability,
+                "monitored": True,
+                "addOptions": {"searchForMovie": search},
+            }
+        )
+        added = self._client.add_movie(payload)
+        return status_from_radarr(added)
+
     def quality_profiles(self) -> list[QualityProfile]:
         return [QualityProfile.from_radarr(p) for p in self._client.quality_profiles()]
 

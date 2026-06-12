@@ -36,13 +36,36 @@ class RadarrClient:
         """Return the configured Radarr root folders."""
         return self._get("/api/v3/rootfolder")
 
+    def lookup_by_tmdb(self, tmdb_id: int) -> dict:
+        """Look up a single movie by TMDB id.
+
+        Returns the full Radarr movie payload (title, year, images, etc.) which
+        is then augmented and posted back to add the movie.
+        """
+        with self._client() as client:
+            response = client.get(
+                "/api/v3/movie/lookup/tmdb", params={"tmdbId": tmdb_id}
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def add_movie(self, payload: dict) -> dict:
+        """Add a movie to the Radarr library and return the created record."""
+        with self._client() as client:
+            response = client.post("/api/v3/movie", json=payload)
+            response.raise_for_status()
+            return response.json()
+
     def _get(self, path: str) -> list[dict]:
-        with httpx.Client(
+        with self._client() as client:
+            response = client.get(path)
+            response.raise_for_status()
+            return response.json()
+
+    def _client(self) -> httpx.Client:
+        return httpx.Client(
             base_url=self._base_url,
             timeout=self._timeout,
             transport=self._transport,
             headers={"X-Api-Key": self._api_key},
-        ) as client:
-            response = client.get(path)
-            response.raise_for_status()
-            return response.json()
+        )

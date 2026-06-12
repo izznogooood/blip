@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 import httpx
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.clients.radarr_client import RadarrClient
 from app.clients.tmdb_client import TMDBClient
 from app.core.database import get_session
+from app.schemas.movie import Movie
 from app.services.cache_service import CacheService
 from app.services.movie_service import (
     LIST_DESCRIPTIONS,
@@ -84,12 +85,27 @@ def _annotate_radarr(
         )
 
 
+def _quality_profiles(radarr: RadarrService | None) -> list:
+    """Fetch Radarr quality profiles for the per-movie override dropdown.
+
+    Fail-soft: a Radarr outage or missing config yields an empty list, in
+    which case the Add form just uses the configured default profile.
+    """
+    if radarr is None:
+        return []
+    try:
+        return radarr.quality_profiles()
+    except httpx.HTTPError:
+        return []
+
+
 @router.get("/movies", response_class=HTMLResponse)
 def movies(
     request: Request,
     list: str = "in_theaters",
     page: int = 1,
     refresh: bool = False,
+    session: Session = Depends(get_session),
     service: MovieService | None = Depends(get_movie_service),
     radarr: RadarrService | None = Depends(get_radarr_service),
 ) -> HTMLResponse:
@@ -99,12 +115,15 @@ def movies(
     later pages return an append fragment whose cards are inserted into the
     existing grid and whose Load More button is swapped out-of-band.
     """
+    resolved = SettingsService(session).resolve()
     context: dict[str, object] = {
         "movies": [],
         "error": None,
         "list_id": list,
         "page_data": None,
         "caption": LIST_DESCRIPTIONS.get(list),
+        "quality_profiles": _quality_profiles(radarr),
+        "default_quality_profile_id": resolved.radarr_default_quality_profile_id,
     }
 
     if service is None:
@@ -145,6 +164,69 @@ def movies(
         context["error"] = "Could not load movies from TMDB right now."
 
     return templates.TemplateResponse(request, "partials/movie_grid.html", context)
+
+
+@router.post("/movies/add", response_class=HTMLResponse)
+def add_movie(
+    request: Request,
+    id: int = Form(...),
+    title: str = Form(...),
+    year: int | None = Form(None),
+    rating: float | None = Form(None),
+    poster_url: str | None = Form(None),
+    search: bool = Form(False),
+    quality_profile_id: int | None = Form(None),
+    session: Session = Depends(get_session),
+    radarr: RadarrService | None = Depends(get_radarr_service),
+) -> HTMLResponse:
+    """Add a movie to Radarr and return the refreshed card (HTMX endpoint).
+
+    The card's hidden fields carry just enough to re-render it; Radarr add
+    options (profile, root folder, minimum availability) come from settings,
+    with the quality profile overridable per movie. On success the card is
+    re-rendered with its new status; on failure it keeps the Add buttons and
+    shows an inline error (PRD §15).
+    """
+    movie = Movie(
+        id=id, title=title, year=year, rating=rating, poster_url=poster_url
+    )
+    context: dict[str, object] = {"movie": movie, "add_error": None}
+
+    if radarr is None:
+        context["add_error"] = "Radarr is not configured. Check your settings."
+        return templates.TemplateResponse(
+            request, "partials/movie_card.html", context
+        )
+
+    resolved = SettingsService(session).resolve()
+    profile_id = quality_profile_id or resolved.radarr_default_quality_profile_id
+    root_folder = resolved.radarr_default_root_folder
+    if not profile_id or not root_folder:
+        context["add_error"] = (
+            "Set a default root folder and quality profile in Settings first."
+        )
+        return templates.TemplateResponse(
+            request, "partials/movie_card.html", context
+        )
+
+    try:
+        movie.radarr_status = radarr.add(
+            movie.id,
+            quality_profile_id=profile_id,
+            root_folder_path=root_folder,
+            minimum_availability=resolved.radarr_default_minimum_availability,
+            search=search,
+        )
+    except httpx.HTTPError as exc:
+        logger.warning(
+            "Radarr add failed: %s (tmdb_id=%s search=%s)",
+            type(exc).__name__,
+            movie.id,
+            search,
+        )
+        context["add_error"] = "Could not add the movie to Radarr. Please try again."
+
+    return templates.TemplateResponse(request, "partials/movie_card.html", context)
 
 
 @router.get("/health")
