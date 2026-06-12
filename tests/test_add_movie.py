@@ -1,3 +1,4 @@
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -86,6 +87,57 @@ def test_add_route_renders_updated_card(monkeypatch) -> None:
         assert "Already in Radarr" in response.text  # in_radarr now true
         assert "Missing" in response.text  # status badge
         assert client.added["addOptions"] == {"searchForMovie": True}
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_add_from_modal_closes_modal_and_updates_card_oob(monkeypatch) -> None:
+    _settings(monkeypatch)
+    client = _AddClient(has_file=False, monitored=True)
+    app.dependency_overrides[get_radarr_service] = lambda: RadarrService(client)
+    try:
+        with TestClient(app) as http:
+            response = http.post(
+                "/movies/add",
+                data={"id": 7, "title": "Test Movie", "search": "false", "source": "modal"},
+            )
+        assert response.status_code == 200
+        # Success closes the modal: retarget the empty swap at #modal.
+        assert response.headers["hx-retarget"] == "#modal"
+        assert response.headers["hx-reswap"] == "innerHTML"
+        # The grid card is updated out-of-band so it stays in sync.
+        assert 'id="movie-card-7"' in response.text
+        assert 'hx-swap-oob="true"' in response.text
+        # The modal control area is not returned — the modal is closing.
+        assert 'id="movie-actions-modal-7"' not in response.text
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_add_from_modal_error_keeps_modal_open(monkeypatch) -> None:
+    _settings(monkeypatch)
+
+    class _Boom:
+        def lookup_by_tmdb(self, tmdb_id: int) -> dict:
+            request = httpx.Request("GET", "http://radarr/api/v3/movie/lookup/tmdb")
+            raise httpx.ConnectError("down", request=request)
+
+        def add_movie(self, payload: dict) -> dict:  # pragma: no cover
+            raise AssertionError("should not be reached")
+
+    app.dependency_overrides[get_radarr_service] = lambda: RadarrService(_Boom())
+    try:
+        with TestClient(app) as http:
+            response = http.post(
+                "/movies/add",
+                data={"id": 7, "title": "Test Movie", "source": "modal"},
+            )
+        assert response.status_code == 200
+        # No retarget: the modal stays open and shows the error + Add buttons.
+        assert "hx-retarget" not in response.headers
+        assert 'id="movie-actions-modal-7"' in response.text
+        assert "Could not add the movie" in response.text
+        assert "Add + Search" in response.text
     finally:
         app.dependency_overrides.clear()
 

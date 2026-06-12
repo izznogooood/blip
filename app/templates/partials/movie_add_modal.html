@@ -1,0 +1,7 @@
+{# Response to a *failed* add initiated from the synopsis modal. (On success the
+   route instead closes the modal via HX-Retarget; see web/routes.py.)
+
+   The main swap replaces the modal's control area with the form plus an inline
+   error so the user can retry; the grid card is refreshed out-of-band. #}
+{% with context="modal" %}{% include "partials/_movie_actions.html" %}{% endwith %}
+{% with oob=True, add_error=None %}{% include "partials/movie_card.html" %}{% endwith %}

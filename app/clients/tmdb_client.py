@@ -39,6 +39,16 @@ class TMDBClient:
             "/movie/upcoming", {"page": page, "region": self._region}
         )
 
+    def movie_details(self, movie_id: int) -> dict:
+        """Return the TMDB details payload for ``movie_id``.
+
+        ``videos`` is appended in the same request so the trailer can be
+        extracted without a second round-trip.
+        """
+        return self._get(
+            f"/movie/{movie_id}", {"append_to_response": "videos"}
+        )
+
     def discover(self, page: int = 1, params: dict | None = None) -> dict:
         """Return a TMDB ``/discover/movie`` payload for ``page``.
 

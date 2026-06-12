@@ -1,0 +1,78 @@
+{# Synopsis modal (PRD §10). Loaded into #modal via HTMX on poster click.
+   Alpine controls visibility; Escape, the close button, and a backdrop click
+   all dismiss it. #}
+<div
+  x-data="{ open: true }"
+  x-show="open"
+  x-on:keydown.escape.window="open = false"
+  x-transition.opacity
+  class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+  x-on:click.self="open = false"
+>
+  <div
+    class="relative max-w-lg w-full max-h-[90vh] overflow-y-auto rounded-lg bg-slate-800 shadow-xl ring-1 ring-slate-700"
+    role="dialog"
+    aria-modal="true"
+  >
+    <button
+      type="button"
+      x-on:click="open = false"
+      class="absolute top-2 right-2 rounded-full bg-slate-900/70 hover:bg-slate-900 w-8 h-8 text-slate-300 text-lg leading-none"
+      aria-label="Close"
+    >
+      &times;
+    </button>
+
+    {% if error %}
+    <div class="p-6 text-amber-200">{{ error }}</div>
+    {% elif detail %}
+    <div class="flex flex-col gap-4 p-5">
+      <div class="flex gap-4">
+        {% if detail.poster_url %}
+        <img
+          src="{{ detail.poster_url }}"
+          alt="Poster for {{ detail.title }}"
+          class="hidden sm:block w-32 shrink-0 rounded object-cover"
+        />
+        {% endif %}
+        <div class="flex flex-col gap-2 min-w-0">
+          <h2 class="text-xl font-bold leading-tight">{{ detail.title }}</h2>
+          <div class="flex flex-wrap items-center gap-3 text-sm text-slate-400">
+            {% if detail.year %}<span>{{ detail.year }}</span>{% endif %}
+            {% if detail.rating %}
+            <span class="inline-flex items-center gap-1">
+              <span aria-hidden="true">★</span>{{ "%.1f"|format(detail.rating) }}
+            </span>
+            {% endif %}
+            {% if detail.release_date %}
+            <span>Released {{ detail.release_date }}</span>
+            {% endif %}
+          </div>
+          {% if detail.overview %}
+          <p class="text-sm text-slate-200 leading-relaxed">{{ detail.overview }}</p>
+          {% else %}
+          <p class="text-sm text-slate-400 italic">No synopsis available.</p>
+          {% endif %}
+          {% if detail.trailer_url %}
+          <a
+            href="{{ detail.trailer_url }}"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="mt-1 inline-flex w-fit items-center gap-1 rounded bg-rose-600 hover:bg-rose-500 px-3 py-1.5 text-sm font-semibold text-white"
+          >
+            ▶ Trailer
+          </a>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Add / Add + Search controls, shared with the card (PRD §11). #}
+      {% if movie %}
+      <div class="border-t border-slate-700 pt-4">
+        {% with context="modal" %}{% include "partials/_movie_actions.html" %}{% endwith %}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>

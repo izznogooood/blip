@@ -5,8 +5,17 @@
   "Unmonitored": "bg-slate-500 text-slate-50",
   "Unknown": "bg-slate-600 text-slate-200",
 } %}
-<article id="movie-card-{{ movie.id }}" class="bg-slate-800 rounded-lg overflow-hidden shadow ring-1 ring-slate-700/50 flex flex-col">
-  <div class="relative aspect-[2/3] bg-slate-700">
+<article id="movie-card-{{ movie.id }}"{% if oob %} hx-swap-oob="true"{% endif %} class="bg-slate-800 rounded-lg overflow-hidden shadow ring-1 ring-slate-700/50 flex flex-col">
+  {# Poster opens the synopsis modal (PRD §10): HTMX loads the modal partial
+     into the shared #modal container. #}
+  <button
+    type="button"
+    class="relative block aspect-[2/3] w-full bg-slate-700 text-left cursor-pointer"
+    hx-get="/movies/{{ movie.id }}/modal"
+    hx-target="#modal"
+    hx-swap="innerHTML"
+    aria-label="View details for {{ movie.title }}"
+  >
     {% if movie.poster_url %}
     <img
       src="{{ movie.poster_url }}"
@@ -26,7 +35,7 @@
       {{ movie.radarr_status.value }}
     </span>
     {% endif %}
-  </div>
+  </button>
 
   <div class="p-3 flex flex-col gap-1">
     <h3 class="font-semibold leading-tight" title="{{ movie.title }}">{{ movie.title }}</h3>
@@ -39,58 +48,7 @@
       {% endif %}
     </div>
 
-    {# Action area. Movies already in Radarr show a static indicator; addable
-       movies get Add / Add + Search buttons (Milestone 7). #}
-    {% if movie.in_radarr %}
-    <p class="mt-1 text-xs font-medium text-slate-400">Already in Radarr</p>
-    {% else %}
-    {% if add_error %}
-    <p class="mt-1 text-xs text-rose-400">{{ add_error }}</p>
-    {% endif %}
-    <form
-      class="mt-1 flex flex-col gap-2"
-      hx-post="/movies/add"
-      hx-target="#movie-card-{{ movie.id }}"
-      hx-swap="outerHTML"
-      hx-disabled-elt="find button"
-    >
-      <input type="hidden" name="id" value="{{ movie.id }}" />
-      <input type="hidden" name="title" value="{{ movie.title }}" />
-      {% if movie.year %}<input type="hidden" name="year" value="{{ movie.year }}" />{% endif %}
-      {% if movie.rating %}<input type="hidden" name="rating" value="{{ movie.rating }}" />{% endif %}
-      {% if movie.poster_url %}<input type="hidden" name="poster_url" value="{{ movie.poster_url }}" />{% endif %}
-
-      {% if quality_profiles %}
-      <select
-        name="quality_profile_id"
-        class="rounded bg-slate-700 text-slate-100 text-xs px-2 py-1"
-        aria-label="Quality profile"
-      >
-        {% for profile in quality_profiles %}
-        <option value="{{ profile.id }}"{% if profile.id == default_quality_profile_id %} selected{% endif %}>{{ profile.name }}</option>
-        {% endfor %}
-      </select>
-      {% endif %}
-
-      <div class="flex gap-2">
-        <button
-          type="submit"
-          name="search"
-          value="false"
-          class="flex-1 rounded bg-sky-600 hover:bg-sky-500 px-2 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-        >
-          Add
-        </button>
-        <button
-          type="submit"
-          name="search"
-          value="true"
-          class="flex-1 rounded bg-emerald-600 hover:bg-emerald-500 px-2 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-        >
-          Add + Search
-        </button>
-      </div>
-    </form>
-    {% endif %}
+    {# Action area, shared with the synopsis modal (see _movie_actions.html). #}
+    {% with context="card" %}{% include "partials/_movie_actions.html" %}{% endwith %}
   </div>
 </article>

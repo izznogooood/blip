@@ -136,3 +136,18 @@ Rationale: lookup-then-post is the reliable, standard Radarr integration; foldin
 Resolves PRD §25 open questions 3 and 4.
 
 Resolves PRD §25 open question 6.
+
+## ADR-013: Synopsis modal — HTMX-loaded partial, append_to_response videos
+
+Show movie details in a modal whose content is fetched on demand via HTMX, rather than embedding detail data in every card up front.
+
+Decisions:
+
+- **Lazy, HTMX-loaded modal.** The poster is an HTMX button that `GET`s `/movies/{id}/modal` into a single shared `#modal` mount; details are fetched only when a movie is actually opened. This keeps the list payload small (list cards need only the fields already in the discovery payload) and the detail/videos call off the hot path of browsing.
+- **`append_to_response=videos`.** Overview, release date, rating, and trailer all come from one TMDB call (`/movie/{id}?append_to_response=videos`), avoiding a second round-trip for the trailer.
+- **Trailer selection precedence.** `_trailer_key` prefers an official YouTube `Trailer`, then any YouTube `Trailer`, then a `Teaser`; non-YouTube sites are ignored (PRD §10 builds a `youtube.com/watch?v=` URL). When no usable trailer exists `trailer_url` is `None` and the button is hidden.
+- **24h detail cache.** `MovieService.details()` reuses `CacheService` under `tmdb:detail:{id}` with `DETAILS_CACHE_TTL`, wiring the detail caching deferred in Milestone 4 (ADR-009). `_cached` gained a `ttl` kwarg so list (1h) and detail (24h) share one code path.
+- **Visibility via Alpine, fail-soft route.** The modal partial is self-contained with its own Alpine `x-data`; Escape, the close button, and a backdrop click dismiss it (no global JS state, ADR-001). The route fails soft — an unconfigured TMDB key or an `httpx.HTTPError` renders the modal with an inline message instead of crashing (PRD §15).
+- **Add / Add + Search from the modal (shared controls).** The Add controls are a single partial (`partials/_movie_actions.html`) included by both the card and the modal, parameterised by a `context` ("card" | "modal") that namespaces the wrapper id (so both can live on the page) and picks the HTMX swap target. A card swaps itself whole (poster greys on success). From the modal: a **successful** add closes the modal — the route returns only the out-of-band card `<article>` and sets `HX-Retarget: #modal` / `HX-Reswap: innerHTML`, so the OOB element updates the grid card while the (now empty) main swap clears `#modal`. A **failed** add keeps the modal open, re-rendering its control area (`movie_add_modal.html`) with the error and Add buttons for retry. `POST /movies/add` carries a `source` field ("card" | "modal") selecting this behaviour. The modal route builds a `Movie` from the detail and annotates it via the same fail-soft `_annotate_radarr` so the modal knows whether to offer Add or show "Already in Radarr". This keeps a single source of truth for the add flow (ADR-012) across both surfaces.
+
+Rationale: lazy loading keeps the card grid cheap and the detail call rare; one `append_to_response` request is the standard TMDB pattern; a self-contained Alpine partial keeps the modal consistent with the backend-first, no-build-pipeline architecture; sharing one controls partial avoids duplicating the add form and keeps card and modal behaviour identical.

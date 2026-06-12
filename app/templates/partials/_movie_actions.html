@@ -1,0 +1,65 @@
+{# Add / Add + Search controls shared by the movie card and the synopsis modal.
+
+   `context` ("card" | "modal") namespaces the wrapper id so both control areas
+   can coexist on the page, and selects the HTMX swap target:
+     - card  → swaps the whole card so the poster greys out on success
+     - modal → swaps just this control area; the route OOB-updates the grid card
+
+   Expects: movie, and (for the addable form) quality_profiles +
+   default_quality_profile_id. add_error renders an inline message. #}
+<div id="movie-actions-{{ context }}-{{ movie.id }}" class="mt-1 flex flex-col gap-2">
+  {% if movie.in_radarr %}
+  <p class="text-xs font-medium text-slate-400">
+    Already in Radarr{% if context == "modal" and movie.radarr_status %} · {{ movie.radarr_status.value }}{% endif %}
+  </p>
+  {% else %}
+  {% if add_error %}
+  <p class="text-xs text-rose-400">{{ add_error }}</p>
+  {% endif %}
+  <form
+    class="flex flex-col gap-2"
+    hx-post="/movies/add"
+    hx-target="{% if context == 'modal' %}#movie-actions-modal-{{ movie.id }}{% else %}#movie-card-{{ movie.id }}{% endif %}"
+    hx-swap="outerHTML"
+    hx-disabled-elt="find button"
+  >
+    <input type="hidden" name="id" value="{{ movie.id }}" />
+    <input type="hidden" name="title" value="{{ movie.title }}" />
+    <input type="hidden" name="source" value="{{ context }}" />
+    {% if movie.year %}<input type="hidden" name="year" value="{{ movie.year }}" />{% endif %}
+    {% if movie.rating %}<input type="hidden" name="rating" value="{{ movie.rating }}" />{% endif %}
+    {% if movie.poster_url %}<input type="hidden" name="poster_url" value="{{ movie.poster_url }}" />{% endif %}
+
+    {% if quality_profiles %}
+    <select
+      name="quality_profile_id"
+      class="rounded bg-slate-700 text-slate-100 text-xs px-2 py-1"
+      aria-label="Quality profile"
+    >
+      {% for profile in quality_profiles %}
+      <option value="{{ profile.id }}"{% if profile.id == default_quality_profile_id %} selected{% endif %}>{{ profile.name }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+
+    <div class="flex gap-2">
+      <button
+        type="submit"
+        name="search"
+        value="false"
+        class="flex-1 rounded bg-sky-600 hover:bg-sky-500 px-2 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+      >
+        Add
+      </button>
+      <button
+        type="submit"
+        name="search"
+        value="true"
+        class="flex-1 rounded bg-emerald-600 hover:bg-emerald-500 px-2 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+      >
+        Add + Search
+      </button>
+    </div>
+  </form>
+  {% endif %}
+</div>

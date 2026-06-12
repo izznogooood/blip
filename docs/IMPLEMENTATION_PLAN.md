@@ -17,7 +17,7 @@ Each milestone should leave the app runnable.
 | 5. Radarr read integration | ✅ Complete |
 | 6. Settings | ✅ Complete |
 | 7. Add and Add + Search | ✅ Complete |
-| 8. Synopsis modal and trailer | ⬜ Not started |
+| 8. Synopsis modal and trailer | ✅ Complete |
 | 9. Polish and tests | ⬜ Not started |
 
 ## Milestone 1: Project skeleton — ✅ Complete
@@ -230,22 +230,30 @@ Notes for later milestones:
 - Route `POST /movies/add` reconstructs a `Movie` from the card's hidden fields (id/title/year/rating/poster_url), resolves Radarr defaults, and renders `partials/movie_card.html`. The card's outer `<article>` now has `id="movie-card-{id}"`; the Add form swaps it `outerHTML`.
 - Cards key the action area off `movie.in_radarr`: existing → "Already in Radarr"; addable → Add / Add + Search form. M8's modal can reuse the same card without touching this.
 
-## Milestone 8: Synopsis modal and trailer
+## Milestone 8: Synopsis modal and trailer — ✅ Complete
 
 Goal: Add detail polish.
 
 Tasks:
 
-1. Fetch movie overview/synopsis from TMDB.
-2. Fetch TMDB videos/trailer.
-3. Clicking poster opens modal.
-4. Modal shows synopsis and trailer link.
-5. Trailer opens YouTube in new tab.
+1. ✅ Fetch movie overview/synopsis from TMDB. (`TMDBClient.movie_details()` → `/movie/{id}?append_to_response=videos`.)
+2. ✅ Fetch TMDB videos/trailer. (Appended in the same request; YouTube key extracted by `_trailer_key`.)
+3. ✅ Clicking poster opens modal. (Poster is an HTMX button loading `partials/movie_modal.html` into the shared `#modal` mount.)
+4. ✅ Modal shows synopsis and trailer link. (Poster, title, year, rating, release date, overview, trailer button.)
+5. ✅ Trailer opens YouTube in new tab. (`https://www.youtube.com/watch?v={key}`, `target="_blank" rel="noopener noreferrer"`.)
 
 Acceptance criteria:
 
-- Poster click works on desktop/tablet/phone.
-- Trailer button appears only when trailer exists.
+- ✅ Poster click works on desktop/tablet/phone. (Responsive overlay; Alpine controls visibility — Escape, close button, and backdrop click dismiss. Verified via route render test.)
+- ✅ Trailer button appears only when trailer exists. (`MovieDetail.trailer_url` is `None` when no usable YouTube trailer; template hides the button. `tests/test_movie_detail.py`, full suite 72 passed.)
+
+Notes for later milestones:
+
+- `MovieDetail` (`app/schemas/movie.py`) is the modal's typed payload; `MovieDetail.from_tmdb()` maps the details+videos payload and `_trailer_key()` picks the best YouTube trailer (official Trailer → any Trailer → Teaser).
+- `MovieService.details(movie_id)` caches via `CacheService` under `tmdb:detail:{id}` with `DETAILS_CACHE_TTL` (24h) — `_cached` now takes a `ttl` kwarg (defaults to `LIST_CACHE_TTL`). This wires the detail caching deferred from Milestone 4.
+- Route `GET /movies/{movie_id}/modal` renders `partials/movie_modal.html`, fail-soft on unconfigured TMDB / HTTP error (inline message, no crash).
+- The `#modal` mount lives in `index.html`; the modal partial is self-contained (its own Alpine `x-data`), so Milestone 9 polish can restyle it without touching the card or route.
+- Add / Add + Search are available from the modal too (PRD §11). The controls are a shared partial `partials/_movie_actions.html` (used by card and modal via a `context` flag); `POST /movies/add` takes a `source` field — from the `modal` a successful add closes the modal (`HX-Retarget: #modal`) and OOB-updates the grid card, a failed add keeps the modal open with an inline error; `card` swaps the whole card. See ADR-013.
 
 ## Milestone 9: Polish and tests
 

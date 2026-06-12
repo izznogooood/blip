@@ -176,57 +176,128 @@ def add_movie(
     poster_url: str | None = Form(None),
     search: bool = Form(False),
     quality_profile_id: int | None = Form(None),
+    source: str = Form("card"),
     session: Session = Depends(get_session),
     radarr: RadarrService | None = Depends(get_radarr_service),
 ) -> HTMLResponse:
-    """Add a movie to Radarr and return the refreshed card (HTMX endpoint).
+    """Add a movie to Radarr and return the refreshed controls (HTMX endpoint).
 
-    The card's hidden fields carry just enough to re-render it; Radarr add
-    options (profile, root folder, minimum availability) come from settings,
-    with the quality profile overridable per movie. On success the card is
-    re-rendered with its new status; on failure it keeps the Add buttons and
-    shows an inline error (PRD §15).
+    Add can be triggered from a card or from the synopsis modal (``source``).
+    The hidden fields carry just enough to re-render; Radarr add options
+    (profile, root folder, minimum availability) come from settings, with the
+    quality profile overridable per movie. On success the controls re-render
+    with the new status; on failure they keep the Add buttons and show an
+    inline error (PRD §15). Adds from the modal also update the grid card
+    out-of-band so it greys out without a reload.
     """
     movie = Movie(
         id=id, title=title, year=year, rating=rating, poster_url=poster_url
     )
-    context: dict[str, object] = {"movie": movie, "add_error": None}
+    add_error: str | None = None
 
     if radarr is None:
-        context["add_error"] = "Radarr is not configured. Check your settings."
+        add_error = "Radarr is not configured. Check your settings."
+    else:
+        resolved = SettingsService(session).resolve()
+        profile_id = quality_profile_id or resolved.radarr_default_quality_profile_id
+        root_folder = resolved.radarr_default_root_folder
+        if not profile_id or not root_folder:
+            add_error = (
+                "Set a default root folder and quality profile in Settings first."
+            )
+        else:
+            try:
+                movie.radarr_status = radarr.add(
+                    movie.id,
+                    quality_profile_id=profile_id,
+                    root_folder_path=root_folder,
+                    minimum_availability=resolved.radarr_default_minimum_availability,
+                    search=search,
+                )
+            except httpx.HTTPError as exc:
+                logger.warning(
+                    "Radarr add failed: %s (tmdb_id=%s search=%s)",
+                    type(exc).__name__,
+                    movie.id,
+                    search,
+                )
+                add_error = "Could not add the movie to Radarr. Please try again."
+
+    context: dict[str, object] = {"movie": movie, "add_error": add_error}
+
+    if source == "modal":
+        if add_error is None:
+            # Success: close the modal by emptying #modal, and update the grid
+            # card out-of-band. The OOB <article> is pulled from the body, so the
+            # retargeted innerHTML swap leaves #modal empty.
+            response = templates.TemplateResponse(
+                request, "partials/movie_card.html", {"movie": movie, "oob": True}
+            )
+            response.headers["HX-Retarget"] = "#modal"
+            response.headers["HX-Reswap"] = "innerHTML"
+            return response
+        # Failure: keep the modal open, re-render its controls with the error.
         return templates.TemplateResponse(
-            request, "partials/movie_card.html", context
+            request, "partials/movie_add_modal.html", context
         )
 
+    # Card source: swap the whole card so its poster greys out on success.
+    return templates.TemplateResponse(request, "partials/movie_card.html", context)
+
+
+@router.get("/movies/{movie_id}/modal", response_class=HTMLResponse)
+def movie_modal(
+    request: Request,
+    movie_id: int,
+    session: Session = Depends(get_session),
+    service: MovieService | None = Depends(get_movie_service),
+    radarr: RadarrService | None = Depends(get_radarr_service),
+) -> HTMLResponse:
+    """Return the synopsis modal partial for a movie (HTMX endpoint).
+
+    Fetches TMDB details (overview, release date, trailer) for the modal and
+    merges Radarr status so the modal can offer Add / Add + Search just like a
+    card. Fails soft: an unconfigured TMDB key or a Radarr outage renders the
+    modal with an inline error / no status rather than crashing (PRD §15).
+    """
     resolved = SettingsService(session).resolve()
-    profile_id = quality_profile_id or resolved.radarr_default_quality_profile_id
-    root_folder = resolved.radarr_default_root_folder
-    if not profile_id or not root_folder:
-        context["add_error"] = (
-            "Set a default root folder and quality profile in Settings first."
-        )
+    context: dict[str, object] = {
+        "detail": None,
+        "movie": None,
+        "error": None,
+        "quality_profiles": _quality_profiles(radarr),
+        "default_quality_profile_id": resolved.radarr_default_quality_profile_id,
+    }
+
+    if service is None:
+        context["error"] = "TMDB API key is not configured."
         return templates.TemplateResponse(
-            request, "partials/movie_card.html", context
+            request, "partials/movie_modal.html", context
         )
 
     try:
-        movie.radarr_status = radarr.add(
-            movie.id,
-            quality_profile_id=profile_id,
-            root_folder_path=root_folder,
-            minimum_availability=resolved.radarr_default_minimum_availability,
-            search=search,
-        )
+        detail = service.details(movie_id)
     except httpx.HTTPError as exc:
         logger.warning(
-            "Radarr add failed: %s (tmdb_id=%s search=%s)",
-            type(exc).__name__,
-            movie.id,
-            search,
+            "TMDB details failed: %s (movie_id=%s)", type(exc).__name__, movie_id
         )
-        context["add_error"] = "Could not add the movie to Radarr. Please try again."
+        context["error"] = "Could not load movie details right now."
+        return templates.TemplateResponse(
+            request, "partials/movie_modal.html", context
+        )
 
-    return templates.TemplateResponse(request, "partials/movie_card.html", context)
+    # A Movie carries the Radarr status + addable state for the shared controls.
+    movie = Movie(
+        id=detail.id,
+        title=detail.title,
+        year=detail.year,
+        rating=detail.rating,
+        poster_url=detail.poster_url,
+    )
+    _annotate_radarr([movie], radarr, list_id="modal", page=movie_id)
+    context["detail"] = detail
+    context["movie"] = movie
+    return templates.TemplateResponse(request, "partials/movie_modal.html", context)
 
 
 @router.get("/health")

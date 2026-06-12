@@ -43,6 +43,42 @@ class Movie(BaseModel):
         )
 
 
+class MovieDetail(BaseModel):
+    """Detailed movie info for the synopsis modal (PRD §10)."""
+
+    id: int
+    title: str
+    year: int | None = None
+    rating: float | None = None
+    poster_url: str | None = None
+    overview: str = ""
+    release_date: str | None = None
+    trailer_url: str | None = None
+
+    @classmethod
+    def from_tmdb(cls, data: dict) -> "MovieDetail":
+        """Map a TMDB ``/movie/{id}?append_to_response=videos`` payload."""
+        poster_path = data.get("poster_path")
+        release_date = data.get("release_date") or None
+        youtube_key = _trailer_key(data.get("videos"))
+        return cls(
+            id=data["id"],
+            title=data.get("title") or data.get("original_title") or "Untitled",
+            year=_parse_year(release_date),
+            rating=_normalize_rating(data.get("vote_average")),
+            poster_url=(
+                f"{TMDB_IMAGE_BASE_URL}{poster_path}" if poster_path else None
+            ),
+            overview=data.get("overview") or "",
+            release_date=release_date,
+            trailer_url=(
+                f"https://www.youtube.com/watch?v={youtube_key}"
+                if youtube_key
+                else None
+            ),
+        )
+
+
 class MoviePage(BaseModel):
     """A single page of mapped movies plus TMDB pagination metadata."""
 
@@ -62,6 +98,29 @@ class MoviePage(BaseModel):
             page=payload.get("page") or 1,
             total_pages=payload.get("total_pages") or 1,
         )
+
+
+def _trailer_key(videos: dict | None) -> str | None:
+    """Return the YouTube key of the best trailer in a TMDB videos block.
+
+    Prefers an official "Trailer", then any "Trailer", then any "Teaser";
+    only YouTube-hosted videos are considered (PRD §10). Returns ``None`` when
+    no usable trailer is present.
+    """
+    results = (videos or {}).get("results") or []
+    youtube = [v for v in results if v.get("site") == "YouTube" and v.get("key")]
+
+    def pick(predicate) -> str | None:
+        for video in youtube:
+            if predicate(video):
+                return video["key"]
+        return None
+
+    return (
+        pick(lambda v: v.get("type") == "Trailer" and v.get("official"))
+        or pick(lambda v: v.get("type") == "Trailer")
+        or pick(lambda v: v.get("type") == "Teaser")
+    )
 
 
 def _parse_year(release_date: str | None) -> int | None:

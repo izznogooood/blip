@@ -2,8 +2,12 @@ from collections.abc import Callable
 from datetime import date, timedelta
 
 from app.clients.tmdb_client import TMDBClient
-from app.schemas.movie import Movie, MoviePage
-from app.services.cache_service import LIST_CACHE_TTL, CacheService
+from app.schemas.movie import Movie, MovieDetail, MoviePage
+from app.services.cache_service import (
+    DETAILS_CACHE_TTL,
+    LIST_CACHE_TTL,
+    CacheService,
+)
 
 # The "Top Rated" list is not a TMDB chart — it is the highest-rated movies
 # across all of Blip's *other* lists (see ADR-008). Its id is referenced by the
@@ -69,6 +73,19 @@ class MovieService:
         payload = self._fetch_list(list_id, page, force_refresh=force_refresh)
         return MoviePage.from_tmdb(payload)
 
+    def details(self, movie_id: int, *, force_refresh: bool = False) -> MovieDetail:
+        """Fetch a movie's details (overview, trailer) for the synopsis modal.
+
+        Cached for 24 hours (PRD §13) under a ``tmdb:detail:{id}`` key.
+        """
+        payload = self._cached(
+            f"tmdb:detail:{movie_id}",
+            lambda: self._client.movie_details(movie_id),
+            force_refresh,
+            ttl=DETAILS_CACHE_TTL,
+        )
+        return MovieDetail.from_tmdb(payload)
+
     def _fetch_list(self, list_id: str, page: int, *, force_refresh: bool) -> dict:
         """Return the raw TMDB payload for a (non-aggregate) list, via the cache."""
         if list_id == "in_theaters":
@@ -88,16 +105,21 @@ class MovieService:
         return self._cached(f"tmdb:list:{list_id}:{page}", fetch, force_refresh)
 
     def _cached(
-        self, key: str, fetch: Callable[[], dict], force_refresh: bool
+        self,
+        key: str,
+        fetch: Callable[[], dict],
+        force_refresh: bool,
+        *,
+        ttl: int = LIST_CACHE_TTL,
     ) -> dict:
-        """Return ``fetch()``'s result, reading/writing the list cache if present."""
+        """Return ``fetch()``'s result, reading/writing the cache if present."""
         if self._cache is not None and not force_refresh:
             cached = self._cache.get(key)
             if cached is not None:
                 return cached
         payload = fetch()
         if self._cache is not None:
-            self._cache.set(key, payload, LIST_CACHE_TTL)
+            self._cache.set(key, payload, ttl)
         return payload
 
     def _top_rated(self, *, force_refresh: bool = False) -> MoviePage:
