@@ -1,5 +1,7 @@
 # Blip
 
+![Blip screenshot](docs/app_picture.png)
+
 Blip is a LAN-hosted movie discovery app for browsing movie lists and adding selected movies directly to Radarr.
 
 The app uses:
@@ -19,6 +21,7 @@ See:
 - `docs/PRD.md`
 - `docs/IMPLEMENTATION_PLAN.md`
 - `docs/DECISIONS.md`
+- `docs/ARCHIVES.md`
 
 ## Local development (venv)
 
