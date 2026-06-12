@@ -98,7 +98,7 @@ Decisions:
 - **Status precedence** (`status_from_radarr`): `hasFile` → `Downloaded` (wins regardless of monitored flag); else `monitored == false` → `Unmonitored`; else `monitored == true` → `Missing`; else `Unknown`. A downloaded-but-unmonitored movie reads as `Downloaded` because the file is what the user cares about. Missing/ambiguous fields fall back to `Unknown` rather than raising.
 - **Match on `tmdbId`.** Blip's lists are TMDB-sourced, so the library is reduced to a `{tmdbId: RadarrStatus}` map; library entries without a `tmdbId` are skipped (unmatchable). `Movie.radarr_status is None` means "not in Radarr" and is the single signal both the desaturation/badge (M5) and the Add buttons (M7) key off.
 - **Merge in the route, fail-soft.** The route fetches the page, then `RadarrService.annotate()` mutates the movies in one library call. A Radarr `httpx.HTTPError` is logged and swallowed (`_annotate_radarr`) so an outage degrades to "no status shown" instead of a broken page (PRD §15). `RadarrService` is an *optional* dependency — `None` when base URL/key are unset — keeping `MovieService` and existing tests independent of Radarr.
-- **No Radarr caching in v1.** The library is fetched once per `/movies` request; a TTL cache (reusing `CacheService`) is deferred unless it proves heavy (KISS, ADR-005).
+- **No Radarr caching in v1.** The library is fetched once per `/movies` request; a TTL cache (reusing `CacheService`) is deferred unless it proves heavy (KISS, ADR-005). Superseded by ADR-014.
 
 `quality_profiles()` / `root_folders()` are exposed now (tasks 4–5) but consumed by the settings (M6) and add (M7) milestones.
 
