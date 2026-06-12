@@ -8,19 +8,22 @@ Stack: Python 3.12+, FastAPI, SQLite, HTMX, Alpine.js, Tailwind CSS.
 
 ## Quick Start with Docker
 
-The easiest way to run Blip is with Docker Compose:
+The easiest way to run Blip is from the public Docker Hub image:
 
 ```bash
-docker compose up -d
+docker run -d --name blip -p 8080:8080 izno/blip:latest
 ```
 
 Then open <http://localhost:8080/>
 
-By default, the app listens on port `8080`. To use a different port, set the environment variable:
+To use a different local port, map it to port `8080` inside the container:
 
 ```bash
-BLIP_PORT=3000 docker compose up -d
+docker run -d --name blip -p 3000:8080 izno/blip:latest
 ```
+
+> Warning: these examples do not persist the app database outside the container. If the container is removed, local data is lost.
+> To keep data between restarts, bind mount, use compose (example under) or use environment variables.
 
 ## Configuration
 
@@ -80,6 +83,10 @@ services:
 volumes:
   blip-data:
 ```
+
+This example uses the public image `izno/blip:latest` from Docker Hub and stores the SQLite database in a named volume. That means data persists across container restarts and rebuilds.
+
+If you want to override the image or build locally, update the `image` field or use `build: .` instead.
 
 ## Local Development
 
