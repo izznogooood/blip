@@ -15,6 +15,7 @@ The app uses:
 
 See:
 
+- `CLAUDE.md`
 - `docs/PRD.md`
 - `docs/IMPLEMENTATION_PLAN.md`
 - `docs/DECISIONS.md`

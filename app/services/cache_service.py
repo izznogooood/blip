@@ -10,6 +10,7 @@ from app.models.cache import CachedResponse
 # details/trailers for 24 hours. (Details caching is wired in a later milestone.)
 LIST_CACHE_TTL = 60 * 60
 DETAILS_CACHE_TTL = 24 * 60 * 60
+RADARR_CACHE_TTL = 10 * 60
 
 
 class CacheService:

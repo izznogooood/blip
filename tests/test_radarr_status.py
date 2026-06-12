@@ -1,6 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 
+from app.core.database import Base
 from app.main import app
 from app.schemas.movie import Movie
 from app.schemas.radarr import (
@@ -9,8 +12,26 @@ from app.schemas.radarr import (
     RootFolder,
     status_from_radarr,
 )
+from app.services.cache_service import CacheService
 from app.services.radarr_service import RadarrService
 from app.web.routes import get_radarr_service
+
+
+class _Clock:
+    def __init__(self, start: float = 1000.0) -> None:
+        self.now = start
+
+    def __call__(self) -> float:
+        return self.now
+
+
+@pytest.fixture
+def session() -> Session:
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(bind=engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with factory() as s:
+        yield s
 
 
 class _StubClient:
@@ -18,8 +39,10 @@ class _StubClient:
 
     def __init__(self, movies: list[dict] | None = None) -> None:
         self._movies = movies or []
+        self.movies_calls = 0
 
     def movies(self) -> list[dict]:
+        self.movies_calls += 1
         return self._movies
 
     def quality_profiles(self) -> list[dict]:
@@ -79,7 +102,68 @@ def test_quality_profiles_and_root_folders_map() -> None:
     assert service.root_folders() == [RootFolder(id=1, path="/movies")]
 
 
+def test_statuses_cache_is_used_within_ttl(session: Session) -> None:
+    client = _StubClient([{"tmdbId": 1, "hasFile": True, "monitored": True}])
+    service = RadarrService(client, cache=CacheService(session))
+    service.statuses_by_tmdb_id()
+    service.statuses_by_tmdb_id()
+    assert client.movies_calls == 1
+
+
+def test_statuses_force_refresh_bypasses_cache(session: Session) -> None:
+    client = _StubClient([{"tmdbId": 1, "hasFile": True, "monitored": True}])
+    service = RadarrService(client, cache=CacheService(session))
+    service.statuses_by_tmdb_id()
+    service.statuses_by_tmdb_id(force_refresh=True)
+    assert client.movies_calls == 2
+
+
+def test_statuses_cache_expires(session: Session) -> None:
+    clock = _Clock()
+    client = _StubClient([{"tmdbId": 1, "hasFile": True, "monitored": True}])
+    service = RadarrService(client, cache=CacheService(session, clock=clock))
+    service.statuses_by_tmdb_id()
+    clock.now += 601
+    service.statuses_by_tmdb_id()
+    assert client.movies_calls == 2
+
+
 # --- route integration -------------------------------------------------------
+
+
+def test_movies_route_forces_radarr_refresh_on_page_one_and_refresh_flag() -> None:
+    from app.services.movie_service import MovieService
+    from app.web.routes import get_movie_service
+
+    class _MovieClient:
+        def now_playing(self, page: int = 1) -> dict:
+            return {
+                "results": [{"id": 1, "title": "Known", "poster_path": "/p.jpg"}],
+                "page": page,
+                "total_pages": 2,
+            }
+
+    class _RadarrRecorder:
+        def __init__(self) -> None:
+            self.force_refresh_calls: list[bool] = []
+
+        def annotate(self, movies, *, force_refresh: bool = False) -> None:
+            self.force_refresh_calls.append(force_refresh)
+
+        def quality_profiles(self) -> list[dict]:
+            return []
+
+    recorder = _RadarrRecorder()
+    app.dependency_overrides[get_movie_service] = lambda: MovieService(_MovieClient())
+    app.dependency_overrides[get_radarr_service] = lambda: recorder
+    try:
+        with TestClient(app) as client:
+            client.get("/movies?list=in_theaters&page=1")
+            client.get("/movies?list=in_theaters&page=2")
+            client.get("/movies?list=in_theaters&page=2&refresh=true")
+        assert recorder.force_refresh_calls == [True, False, True]
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_movies_route_renders_status_badge_and_grays_existing() -> None:

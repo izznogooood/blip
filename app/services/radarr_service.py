@@ -8,6 +8,7 @@ from app.schemas.radarr import (
     RootFolder,
     status_from_radarr,
 )
+from app.services.cache_service import CacheService, RADARR_CACHE_TTL
 
 
 class RadarrService:
@@ -18,30 +19,44 @@ class RadarrService:
     and root folders are surfaced here too for the settings/add milestones.
     """
 
-    def __init__(self, client: RadarrClient) -> None:
+    def __init__(self, client: RadarrClient, *, cache: CacheService | None = None) -> None:
         self._client = client
+        self._cache = cache
 
-    def statuses_by_tmdb_id(self) -> dict[int, RadarrStatus]:
+    def statuses_by_tmdb_id(
+        self, *, force_refresh: bool = False
+    ) -> dict[int, RadarrStatus]:
         """Return a map of TMDB id → :class:`RadarrStatus` for library movies.
 
         Movies without a ``tmdbId`` are skipped (they can't be matched to a
         TMDB list entry). On a duplicate tmdbId the first wins.
         """
+        if self._cache is not None and not force_refresh:
+            cached = self._cache.get("radarr:statuses")
+            if cached is not None:
+                return {int(k): RadarrStatus(v) for k, v in cached.items()}
+
         statuses: dict[int, RadarrStatus] = {}
         for movie in self._client.movies():
             tmdb_id = movie.get("tmdbId")
             if tmdb_id is None:
                 continue
             statuses.setdefault(int(tmdb_id), status_from_radarr(movie))
+        if self._cache is not None:
+            self._cache.set(
+                "radarr:statuses",
+                {str(k): v.value for k, v in statuses.items()},
+                RADARR_CACHE_TTL,
+            )
         return statuses
 
-    def annotate(self, movies: Iterable[Movie]) -> None:
+    def annotate(self, movies: Iterable[Movie], *, force_refresh: bool = False) -> None:
         """Set ``radarr_status`` on each movie present in the Radarr library.
 
         Movies not in Radarr are left as ``None`` (addable). One Radarr call is
         made regardless of how many movies are passed.
         """
-        statuses = self.statuses_by_tmdb_id()
+        statuses = self.statuses_by_tmdb_id(force_refresh=force_refresh)
         for movie in movies:
             movie.radarr_status = statuses.get(movie.id)
 

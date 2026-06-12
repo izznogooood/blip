@@ -53,7 +53,8 @@ def get_radarr_service(
     if not resolved.radarr_configured:
         return None
     return RadarrService(
-        RadarrClient(resolved.radarr_base_url, resolved.radarr_api_key)
+        RadarrClient(resolved.radarr_base_url, resolved.radarr_api_key),
+        cache=CacheService(session),
     )
 
 
@@ -65,7 +66,12 @@ def index(request: Request) -> HTMLResponse:
 
 
 def _annotate_radarr(
-    movies: list, radarr: RadarrService | None, *, list_id: str, page: int
+    movies: list,
+    radarr: RadarrService | None,
+    *,
+    list_id: str,
+    page: int,
+    force_refresh: bool = False,
 ) -> None:
     """Merge Radarr status onto movies, failing soft if Radarr is unavailable.
 
@@ -75,7 +81,7 @@ def _annotate_radarr(
     if radarr is None:
         return
     try:
-        radarr.annotate(movies)
+        radarr.annotate(movies, force_refresh=force_refresh)
     except httpx.HTTPError as exc:
         logger.warning(
             "Radarr lookup failed: %s (list=%s page=%s) — cards shown without status",
@@ -132,7 +138,13 @@ def movies(
 
     try:
         page_data = service.movies(list, page=page, force_refresh=refresh)
-        _annotate_radarr(page_data.movies, radarr, list_id=list, page=page)
+        _annotate_radarr(
+            page_data.movies,
+            radarr,
+            list_id=list,
+            page=page,
+            force_refresh=refresh or page <= 1,
+        )
         context["movies"] = page_data.movies
         context["page_data"] = page_data
         template = (
