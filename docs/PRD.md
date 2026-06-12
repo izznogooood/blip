@@ -94,34 +94,8 @@ No authentication is required for v1.
 
 ---
 
-### 5. Recommended technology stack
 
-#### Backend
-
-- Python `3.12+`
-- FastAPI
-- Pydantic v2
-- httpx
-- SQLModel or SQLAlchemy 2.x
-- SQLite
-- pytest
-
-#### Frontend
-
-- Server-rendered HTML templates.
-- Jinja2 templates.
-- HTMX for server-driven interactivity.
-- Alpine.js for local UI state.
-- Tailwind CSS for styling.
-
-#### Deployment
-
-- Docker
-- Docker Compose
-
----
-
-### 6. Architecture decision
+### 7. Architecture decision
 
 Use a **backend-first server-rendered architecture**.
 
@@ -157,7 +131,7 @@ This keeps the project simple, avoids a JavaScript build pipeline, and keeps the
 
 ---
 
-### 7. Core user flow
+### 8. Core user flow
 
 #### Main flow
 
@@ -186,7 +160,7 @@ The user can open Blip on the LAN, choose “Upcoming Theatrical,” see movie c
 
 ---
 
-### 8. Movie lists
+### 9. Movie lists
 
 Blip v1 shall support the following lists:
 
@@ -216,7 +190,7 @@ Platform display/filtering can be added later.
 
 ---
 
-### 9. Sorting and pagination
+### 10. Sorting and pagination
 
 #### Sorting
 
@@ -238,7 +212,7 @@ When switching back to a previous list, it loads fresh from page 1.
 
 ---
 
-### 10. Movie card requirements
+### 11. Movie card requirements
 
 Each movie card shall display:
 
@@ -277,7 +251,7 @@ If no trailer is found, hide the trailer button.
 
 ---
 
-### 11. Radarr integration
+### 12. Radarr integration
 
 #### Required Radarr capabilities
 
@@ -354,7 +328,7 @@ Add buttons should be disabled or replaced with a clear “Already in Radarr” 
 
 ---
 
-### 12. Settings
+### 13. Settings
 
 Blip shall provide a simple settings page/modal.
 
@@ -385,7 +359,7 @@ Environment variables should be suitable for Docker Compose deployment.
 
 ---
 
-### 13. Caching
+### 14. Caching
 
 Blip shall use SQLite-backed caching for TMDB responses.
 
@@ -405,7 +379,7 @@ Each list should have a manual refresh action that bypasses or invalidates the c
 
 ---
 
-### 14. Persistence
+### 15. Persistence
 
 Use SQLite for local persistence.
 
@@ -425,7 +399,7 @@ Use SQLite for local persistence.
 
 ---
 
-### 15. Error handling
+### 16. Error handling
 
 #### Add failures
 
@@ -459,7 +433,7 @@ Settings page should validate:
 
 ---
 
-### 16. Security assumptions
+### 17. Security assumptions
 
 Blip v1 runs on a trusted LAN.
 
@@ -475,79 +449,6 @@ However:
 
 ---
 
-### 17. Suggested project structure
-
-```text
-blip/
-  app/
-    __init__.py
-    main.py
-
-    core/
-      __init__.py
-      config.py
-      database.py
-      logging.py
-
-    models/
-      __init__.py
-      settings.py
-      cache.py
-      history.py
-
-    schemas/
-      __init__.py
-      movie.py
-      radarr.py
-      settings.py
-
-    services/
-      __init__.py
-      movie_service.py
-      radarr_service.py
-      settings_service.py
-      cache_service.py
-
-    clients/
-      __init__.py
-      tmdb_client.py
-      radarr_client.py
-
-    web/
-      __init__.py
-      routes.py
-      settings_routes.py
-      movie_routes.py
-
-    templates/
-      base.html
-      index.html
-      settings.html
-      partials/
-        movie_grid.html
-        movie_card.html
-        movie_modal.html
-        list_tabs.html
-        toast.html
-
-    static/
-      app.css
-      app.js
-
-  tests/
-    test_movie_service.py
-    test_radarr_service.py
-    test_tmdb_client.py
-    test_cache_service.py
-
-  Dockerfile
-  docker-compose.yml
-  pyproject.toml
-  README.md
-  .env.example
-```
-
----
 
 ### 18. Suggested backend layering
 
@@ -663,8 +564,6 @@ Suggested styling:
 
 ### 21. Testing requirements
 
-v1 should include basic pytest coverage.
-
 #### Required test areas
 
 - TMDB response mapping to internal movie schema.
@@ -715,57 +614,7 @@ SQLite database should be stored in a mounted Docker volume.
 
 ---
 
-### 23. Milestones
-
-#### Milestone 1 — Project skeleton
-
-- FastAPI app starts.
-- Docker Compose works.
-- SQLite connection works.
-- Base template renders.
-- Basic Tailwind/HTMX/Alpine setup works.
-
-#### Milestone 2 — TMDB discovery
-
-- TMDB client works.
-- In Theaters list renders.
-- Upcoming Theatrical list renders.
-- Movie cards render with poster/title/year/rating.
-- Load More appends cards.
-
-#### Milestone 3 — Radarr read integration
-
-- Radarr settings can be configured.
-- Root folders can be fetched.
-- Quality profiles can be fetched.
-- Existing Radarr movies are fetched.
-- Cards show Radarr status.
-
-#### Milestone 4 — Radarr add integration
-
-- Add sends movie to Radarr.
-- Add + Search sends movie to Radarr and triggers search.
-- Card updates after add.
-- Error handling works.
-
-#### Milestone 5 — Settings and cache
-
-- Settings page works.
-- Env fallback works.
-- TMDB responses are cached.
-- Manual refresh bypasses cache.
-
-#### Milestone 6 — Polish and tests
-
-- Synopsis modal works.
-- Trailer link works.
-- Responsive UI polish.
-- pytest coverage for core services.
-- README completed.
-
----
-
-### 24. Acceptance criteria
+### 23. Acceptance criteria
 
 Blip v1 is complete when:
 
@@ -792,18 +641,3 @@ Blip v1 is complete when:
 - TMDB responses are cached.
 - Manual refresh works.
 - Basic pytest tests pass.
-
----
-
-### 25. Open implementation questions for Claude Code
-
-These should be resolved during implementation:
-
-1. ~~Exact TMDB endpoints to use for “New at Home” and “Upcoming at Home.”~~ **Resolved: `/discover/movie` with `with_release_type=4|5` and a `release_date` window (see ADR-008).**
-2. ~~Whether TMDB watch provider data is sufficient for at-home classification.~~ **Resolved: not used in v1; at-home is approximated via digital/physical release type (see ADR-008).**
-3. ~~Exact current Radarr API payload for adding a movie by TMDB ID.~~ **Resolved: look up the movie via `/api/v3/movie/lookup/tmdb` and POST the augmented body to `/api/v3/movie` (see ADR-012).**
-4. ~~Best way to trigger search immediately after add in the current Radarr API.~~ **Resolved: set `addOptions.searchForMovie=true` in the add call (see ADR-012).**
-5. ~~Whether SQLModel or SQLAlchemy 2.x should be used.~~ **Resolved: SQLAlchemy 2.x (see ADR-006).**
-6. ~~Whether settings should be stored as key-value rows or a single settings row.~~ **Resolved: a single typed settings row with environment-variable fallback (see ADR-011).**
-7. ~~Whether Tailwind should stay CDN-only for v1 or later move to a build step.~~ **Resolved: CDN only for v1 (see ADR-007).**
-
