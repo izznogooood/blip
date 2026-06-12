@@ -4,88 +4,93 @@
 
 Blip is a LAN-hosted movie discovery app for browsing movie lists and adding selected movies directly to Radarr.
 
-The app uses:
+Stack: Python 3.12+, FastAPI, SQLite, HTMX, Alpine.js, Tailwind CSS.
 
-- Python 3.12+
-- FastAPI
-- Pydantic v2
-- SQLite
-- HTMX
-- Alpine.js
-- Tailwind CSS
-- Docker Compose
+## Quick Start with Docker
 
-See:
-
-- `CLAUDE.md`
-- `docs/PRD.md`
-- `docs/IMPLEMENTATION_PLAN.md`
-- `docs/DECISIONS.md`
-- `docs/ARCHIVES.md`
-
-## Local development (venv)
-
-Docker is the primary run path, but the app runs fine directly on your machine
-for local development. You need Python 3.12+.
-
-### 1. Create and activate a virtual environment
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-```
-
-### 2. Install the project (with dev/test dependencies)
-
-```bash
-pip install -e ".[dev]"
-```
-
-The `-e` (editable) install means code changes are picked up without
-reinstalling. The `[dev]` extra adds `pytest`.
-
-### 3. Configure environment (optional for now)
-
-```bash
-cp .env.example .env
-```
-
-Settings fall back to sensible defaults, so `.env` is optional until TMDB/Radarr
-integration lands. Locally the SQLite database is created at `./data/blip.db`
-(auto-created on startup; the `data/` directory is gitignored).
-
-### 4. Run the dev server
-
-```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8080
-```
-
-Then open:
-
-- App: <http://localhost:8080/>
-- Health check: <http://localhost:8080/health>
-
-`--reload` restarts the server automatically when you edit code.
-
-## Running tests
-
-```bash
-pytest
-```
-
-(Run inside the activated venv, or use `.venv/bin/pytest` without activating.)
-
-## Running with Docker
-
-The supported deployment path:
+The easiest way to run Blip is with Docker Compose:
 
 ```bash
 docker compose up -d
 ```
 
-This serves the app on the port from `BLIP_PORT` (default `8080`) and persists
-SQLite data in a named Docker volume.
+Then open <http://localhost:8080/>
 
-## Development goal
+By default, the app listens on port `8080`. To use a different port, set the environment variable:
 
-Build this project incrementally in small vertical slices. Do not scaffold unnecessary features before proving the core TMDB and Radarr integrations.
+```bash
+BLIP_PORT=3000 docker compose up -d
+```
+
+## Configuration
+
+Blip can be configured in two ways:
+
+1. **Environment variables** — set when starting the container
+2. **Settings UI** — configure inside the app after it's running (overrides environment variables)
+
+### Getting API Keys
+
+**TMDB API Key** (free for private use):
+1. Sign up for a free account at [themoviedb.org](https://www.themoviedb.org)
+2. Go to Settings → API and request a key
+
+**Radarr API Key**:
+- Generated automatically when you install Radarr
+- Found in Radarr Settings → General → API Key
+
+### Environment Variables
+
+Create a `.env` file in the project root (or pass variables to `docker compose`):
+
+```env
+# Optional: change the app's port (default 8080)
+BLIP_PORT=8080
+
+# TMDB (The Movie Database) integration
+TMDB_API_KEY=your_tmdb_api_key
+
+# Radarr integration
+RADARR_BASE_URL=http://radarr:7878
+RADARR_API_KEY=your_radarr_api_key
+RADARR_DEFAULT_ROOT_FOLDER=/mnt/movies
+RADARR_DEFAULT_QUALITY_PROFILE_ID=1
+RADARR_DEFAULT_MINIMUM_AVAILABILITY=released
+```
+
+**Note:** All configuration is optional at startup. You can configure Blip entirely through the Settings UI once the app is running.
+
+
+## Docker Compose Example
+
+```yaml
+services:
+  blip:
+    image: izno/blip:latest
+    ports:
+      - "8080:8080"
+    environment:
+      TMDB_API_KEY: your_tmdb_api_key_here
+      RADARR_BASE_URL: http://radarr:7878
+      RADARR_API_KEY: your_radarr_api_key_here
+    volumes:
+      - blip-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  blip-data:
+```
+
+## Local Development
+
+For local development with Python, see [DEVELOPMENT.md](DEVELOPMENT.md).
+
+## Documentation
+
+- [DEVELOPMENT.md](DEVELOPMENT.md) — Local dev setup (venv)
+- [CLAUDE.md](CLAUDE.md) — Internal development notes
+- [docs/PRD.md](docs/PRD.md) — Product requirements and feature overview
+- [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) — Milestone roadmap
+- [docs/DECISIONS.md](docs/DECISIONS.md) — Architecture decision records
+- [docs/ARCHIVES.md](docs/ARCHIVES.md) — Completed milestone details
+
