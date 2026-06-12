@@ -151,3 +151,17 @@ Decisions:
 - **Add / Add + Search from the modal (shared controls).** The Add controls are a single partial (`partials/_movie_actions.html`) included by both the card and the modal, parameterised by a `context` ("card" | "modal") that namespaces the wrapper id (so both can live on the page) and picks the HTMX swap target. A card swaps itself whole (poster greys on success). From the modal: a **successful** add closes the modal — the route returns only the out-of-band card `<article>` and sets `HX-Retarget: #modal` / `HX-Reswap: innerHTML`, so the OOB element updates the grid card while the (now empty) main swap clears `#modal`. A **failed** add keeps the modal open, re-rendering its control area (`movie_add_modal.html`) with the error and Add buttons for retry. `POST /movies/add` carries a `source` field ("card" | "modal") selecting this behaviour. The modal route builds a `Movie` from the detail and annotates it via the same fail-soft `_annotate_radarr` so the modal knows whether to offer Add or show "Already in Radarr". This keeps a single source of truth for the add flow (ADR-012) across both surfaces.
 
 Rationale: lazy loading keeps the card grid cheap and the detail call rare; one `append_to_response` request is the standard TMDB pattern; a self-contained Alpine partial keeps the modal consistent with the backend-first, no-build-pipeline architecture; sharing one controls partial avoids duplicating the add form and keeps card and modal behaviour identical.
+
+## ADR-014: Radarr library caching — 10 minute TTL with UI-driven refresh
+
+Cache Radarr library-derived statuses in `CacheService` for 10 minutes and refresh that cache when users explicitly request fresh list data.
+
+Decisions:
+
+- **Add a dedicated Radarr TTL.** `RADARR_CACHE_TTL = 10 * 60` in `app/services/cache_service.py`, reusing the existing generic `(key, value, expires_at)` cache model (ADR-009).
+- **Cache the status map, not raw movie payloads.** `RadarrService.statuses_by_tmdb_id(...)` stores a single `radarr:statuses` entry containing `{tmdbId: status}` (serialised as string keys + enum values) and reconstructs `dict[int, RadarrStatus]` on read. This keeps read-time annotation fast and avoids reshaping the full library repeatedly.
+- **Expose explicit bypass via `force_refresh`.** `RadarrService.annotate(..., force_refresh=...)` and `_annotate_radarr(..., force_refresh=...)` propagate a caller-controlled refresh signal so route intent determines when cached data is reused vs re-fetched.
+- **Refresh on user intent for fresh browsing state.** In `/movies`, Radarr cache is forced fresh when `refresh=true` (manual Refresh button) and on `page <= 1` requests (initial grid load and list/tab switches). `Load More` pages reuse warm cache unless explicitly refreshed.
+- **Keep fail-soft behavior unchanged.** Radarr outages still degrade to “no status shown” rather than breaking pages, and Radarr remains an optional dependency when unconfigured.
+
+Rationale: the modal and list interactions felt delayed because each annotation path fetched the full Radarr library. A short TTL dramatically improves perceived responsiveness while preserving predictable refresh points tied to explicit user actions.
