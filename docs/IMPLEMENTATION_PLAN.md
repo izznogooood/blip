@@ -53,5 +53,3 @@ Notes:
 - Keep this section brief.
 - Move completed detail to `docs/ARCHIVE.md`.
 - Do not expand this file with historical notes.
-
-If you want, I can also rewrite `ARCHIVE.md` in the same clean Markdown style.
