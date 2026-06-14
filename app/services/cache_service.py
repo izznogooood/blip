@@ -37,6 +37,12 @@ class CacheService:
             return None
         return json.loads(entry.value)
 
+    def delete(self, key: str) -> None:
+        entry = self._session.get(CachedResponse, key)
+        if entry is not None:
+            self._session.delete(entry)
+            self._session.commit()
+
     def set(self, key: str, value: dict, ttl: int) -> None:
         """Store ``value`` under ``key``, expiring ``ttl`` seconds from now."""
         expires_at = self._clock() + ttl

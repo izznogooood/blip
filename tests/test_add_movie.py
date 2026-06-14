@@ -27,6 +27,26 @@ class _AddClient:
 # --- service ------------------------------------------------------------------
 
 
+def test_add_invalidates_radarr_cache() -> None:
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session, sessionmaker
+
+    from app.core.database import Base
+    from app.models.cache import CachedResponse  # noqa: F401
+    from app.services.cache_service import RADARR_CACHE_TTL, CacheService
+
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(bind=engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with factory() as session:
+        client = _AddClient(has_file=False, monitored=True)
+        cache = CacheService(session)
+        cache.set("radarr:statuses", {"42": "Missing"}, RADARR_CACHE_TTL)
+        service = RadarrService(client, cache=cache)
+        service.add(42, quality_profile_id=1, root_folder_path="/movies")
+        assert cache.get("radarr:statuses") is None
+
+
 def test_add_builds_payload_and_returns_status() -> None:
     client = _AddClient(has_file=False, monitored=True)
     status = RadarrService(client).add(

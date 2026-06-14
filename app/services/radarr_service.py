@@ -87,6 +87,8 @@ class RadarrService:
             }
         )
         added = self._client.add_movie(payload)
+        if self._cache is not None:
+            self._cache.delete("radarr:statuses")
         return status_from_radarr(added)
 
     def quality_profiles(self) -> list[QualityProfile]:
