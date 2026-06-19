@@ -123,6 +123,17 @@ def _trailer_key(videos: dict | None) -> str | None:
     )
 
 
+class Genre(BaseModel):
+    """A TMDB movie genre."""
+
+    id: int
+    name: str
+
+    @classmethod
+    def from_tmdb(cls, data: dict) -> "Genre":
+        return cls(id=data["id"], name=data.get("name", ""))
+
+
 def _parse_year(release_date: str | None) -> int | None:
     """Extract the year from a TMDB ``YYYY-MM-DD`` release date."""
     if not release_date:

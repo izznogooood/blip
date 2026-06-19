@@ -2,7 +2,7 @@ from collections.abc import Callable
 from datetime import date, timedelta
 
 from app.clients.tmdb_client import TMDBClient
-from app.schemas.movie import Movie, MovieDetail, MoviePage
+from app.schemas.movie import Genre, Movie, MovieDetail, MoviePage
 from app.services.cache_service import (
     DETAILS_CACHE_TTL,
     LIST_CACHE_TTL,
@@ -31,6 +31,8 @@ VALID_LIST_IDS = {list_id for list_id, _ in MOVIE_LISTS}
 _HOME_RELEASE_TYPES = "4|5"
 # How far back a digital/physical release still counts as "new at home".
 _NEW_AT_HOME_WINDOW_DAYS = 90
+# How far back to look when browsing movies by genre.
+_GENRE_WINDOW_DAYS = 180
 # How far ahead to look for announced home releases.
 _UPCOMING_AT_HOME_WINDOW_DAYS = 180
 
@@ -71,6 +73,33 @@ class MovieService:
         if list_id == TOP_RATED_LIST_ID:
             return self._top_rated(force_refresh=force_refresh)
         payload = self._fetch_list(list_id, page, force_refresh=force_refresh)
+        return MoviePage.from_tmdb(payload)
+
+    def genres(self, *, force_refresh: bool = False) -> list[Genre]:
+        """Return the full list of TMDB movie genres.
+
+        Cached for 24 hours since the genre taxonomy rarely changes.
+        """
+        payload = self._cached(
+            "tmdb:genres",
+            lambda: self._client.genres(),
+            force_refresh,
+            ttl=DETAILS_CACHE_TTL,
+        )
+        return [Genre.from_tmdb(g) for g in (payload.get("genres") or [])]
+
+    def genre_movies(
+        self, genre_id: int, page: int = 1, *, sort_by_rating: bool = False, force_refresh: bool = False
+    ) -> MoviePage:
+        """Fetch one page of movies for ``genre_id`` released in the last 180 days."""
+        cache_key = f"tmdb:genre:{genre_id}:{page}:{'rating' if sort_by_rating else 'date'}"
+        payload = self._cached(
+            cache_key,
+            lambda: self._client.discover(
+                page=page, params=self._genre_params(genre_id, sort_by_rating=sort_by_rating)
+            ),
+            force_refresh,
+        )
         return MoviePage.from_tmdb(payload)
 
     def details(self, movie_id: int, *, force_refresh: bool = False) -> MovieDetail:
@@ -154,6 +183,17 @@ class MovieService:
             "release_date.gte": start.isoformat(),
             "release_date.lte": today.isoformat(),
             "sort_by": "primary_release_date.desc",
+        }
+
+    @staticmethod
+    def _genre_params(genre_id: int, *, sort_by_rating: bool = False) -> dict:
+        today = date.today()
+        start = today - timedelta(days=_GENRE_WINDOW_DAYS)
+        return {
+            "with_genres": str(genre_id),
+            "release_date.gte": start.isoformat(),
+            "release_date.lte": today.isoformat(),
+            "sort_by": "vote_average.desc" if sort_by_rating else "primary_release_date.desc",
         }
 
     @staticmethod

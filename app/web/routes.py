@@ -59,9 +59,21 @@ def get_radarr_service(
 
 
 @router.get("/", response_class=HTMLResponse)
-def index(request: Request) -> HTMLResponse:
+def index(
+    request: Request,
+    session: Session = Depends(get_session),
+    service: MovieService | None = Depends(get_movie_service),
+) -> HTMLResponse:
+    genres: list = []
+    if service is not None:
+        try:
+            genres = service.genres()
+        except httpx.HTTPError:
+            logger.warning("Failed to fetch genre list")
     return templates.TemplateResponse(
-        request, "index.html", {"app_name": "Blip", "lists": MOVIE_LISTS}
+        request,
+        "index.html",
+        {"app_name": "Blip", "lists": MOVIE_LISTS, "genres": genres},
     )
 
 
@@ -105,29 +117,50 @@ def _quality_profiles(radarr: RadarrService | None) -> list:
         return []
 
 
+def _genre_caption(service: MovieService | None, genre_id: int) -> str | None:
+    """Look up the genre name from the cached genre list for the caption."""
+    if service is None:
+        return None
+    try:
+        for g in service.genres():
+            if g.id == genre_id:
+                return f"{g.name} — new movies released in the last 180 days"
+    except httpx.HTTPError:
+        pass
+    return None
+
+
 @router.get("/movies", response_class=HTMLResponse)
 def movies(
     request: Request,
     list: str = "in_theaters",
     page: int = 1,
     refresh: bool = False,
+    genre_id: int | None = None,
+    sort_by_rating: bool = False,
     session: Session = Depends(get_session),
     service: MovieService | None = Depends(get_movie_service),
     radarr: RadarrService | None = Depends(get_radarr_service),
 ) -> HTMLResponse:
-    """Return a movie grid partial for the given list (HTMX endpoint).
+    """Return a movie grid partial for the given list or genre (HTMX endpoint).
 
-    Page 1 returns the full grid (used for initial load and tab switches);
-    later pages return an append fragment whose cards are inserted into the
-    existing grid and whose Load More button is swapped out-of-band.
+    When ``genre_id`` is provided the grid shows movies from that genre;
+    otherwise it shows a named list. Page 1 returns the full grid; later pages
+    return an append fragment.
     """
     resolved = SettingsService(session).resolve()
     context: dict[str, object] = {
         "movies": [],
         "error": None,
         "list_id": list,
+        "genre_id": genre_id,
+        "sort_by_rating": sort_by_rating,
         "page_data": None,
-        "caption": LIST_DESCRIPTIONS.get(list),
+        "caption": (
+            _genre_caption(service, genre_id)
+            if genre_id
+            else LIST_DESCRIPTIONS.get(list)
+        ),
         "quality_profiles": _quality_profiles(radarr),
         "default_quality_profile_id": resolved.radarr_default_quality_profile_id,
     }
@@ -137,7 +170,10 @@ def movies(
         return templates.TemplateResponse(request, "partials/movie_grid.html", context)
 
     try:
-        page_data = service.movies(list, page=page, force_refresh=refresh)
+        if genre_id:
+            page_data = service.genre_movies(genre_id, page=page, sort_by_rating=sort_by_rating, force_refresh=refresh)
+        else:
+            page_data = service.movies(list, page=page, force_refresh=refresh)
         _annotate_radarr(
             page_data.movies,
             radarr,

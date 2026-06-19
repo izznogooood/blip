@@ -172,3 +172,15 @@ Decisions:
 - Completed milestone notes should be moved out of the implementation plan.
 - The implementation plan should not accumulate history over time.
 - Keep docs optimized for low-token re-reading in future sessions.
+
+## ADR-016: Genre discovery — live genre list, 180-day discover window, tabs-and-dropdown coexistence
+
+Add a genre dropdown alongside the existing list tabs.
+
+Decisions:
+- Genres are fetched live from TMDB (`/genre/movie/list`) on page load and cached 24h.
+- Genre discovery uses `/discover/movie` with `with_genres=<id>`, a 180-day lookback window, and `sort_by=primary_release_date.desc`.
+- Genres are not added to `MOVIE_LISTS` — they are a separate browsing dimension and do not pollute the Top Rated aggregation.
+- The dropdown uses Alpine.js for local state (active tab vs active genre) and HTMX for server requests via `htmx.ajax()`.
+- Genre name is looked up server-side from the cached genre list for the grid caption.
+- Load More preserves the `genre_id` query parameter.

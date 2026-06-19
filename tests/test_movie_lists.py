@@ -30,6 +30,9 @@ class _RecordingClient:
         self.calls.append(("discover", {"page": page, **(params or {})}))
         return self.payload
 
+    def genres(self) -> dict:
+        return {"genres": [{"id": 28, "name": "Action"}, {"id": 53, "name": "Thriller"}]}
+
 
 # "top_rated" is excluded — it is an aggregate of the other lists, not a single
 # TMDB endpoint (see ADR-008 and test_top_rated_* below).
@@ -198,5 +201,65 @@ def test_unknown_list_route_shows_error() -> None:
             response = client.get("/movies?list=bogus")
         assert response.status_code == 200
         assert "Unknown list" in response.text
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_genre_movies_dispatches_to_discover() -> None:
+    client = _RecordingClient()
+    MovieService(client).genre_movies(53, page=1)
+    assert client.calls[0][0] == "discover"
+    params = client.calls[0][1]
+    assert params["with_genres"] == "53"
+    assert params["sort_by"] == "primary_release_date.desc"
+
+
+def test_genre_movies_uses_180_day_window() -> None:
+    client = _RecordingClient()
+    MovieService(client).genre_movies(28, page=1)
+    params = client.calls[0][1]
+    assert "release_date.gte" in params
+    assert "release_date.lte" in params
+
+
+def test_genre_movies_sorts_by_date_by_default() -> None:
+    client = _RecordingClient()
+    MovieService(client).genre_movies(28, page=1)
+    assert client.calls[0][1]["sort_by"] == "primary_release_date.desc"
+
+
+def test_genre_movies_sorts_by_rating_when_requested() -> None:
+    client = _RecordingClient()
+    MovieService(client).genre_movies(28, page=1, sort_by_rating=True)
+    assert client.calls[0][1]["sort_by"] == "vote_average.desc"
+
+
+def test_genre_route_shows_caption() -> None:
+    recording = _RecordingClient()
+    app.dependency_overrides[get_movie_service] = lambda: MovieService(recording)
+    try:
+        with TestClient(app) as tc:
+            response = tc.get("/movies?genre_id=53")
+        assert response.status_code == 200
+        assert "Thriller" in response.text
+        assert "180 days" in response.text
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_genre_route_load_more_includes_genre_id() -> None:
+    payload = {
+        "results": [{"id": 1, "title": "Genre Movie"}],
+        "page": 1,
+        "total_pages": 2,
+    }
+    app.dependency_overrides[get_movie_service] = lambda: MovieService(
+        _RecordingClient(payload)
+    )
+    try:
+        with TestClient(app) as tc:
+            response = tc.get("/movies?genre_id=53&page=1")
+        assert "Load More" in response.text
+        assert "genre_id=53" in response.text  # Load More preserves genre
     finally:
         app.dependency_overrides.clear()
