@@ -49,6 +49,10 @@ class TMDBClient:
             f"/movie/{movie_id}", {"append_to_response": "videos"}
         )
 
+    def genres(self) -> dict:
+        """Return the TMDB genre list payload."""
+        return self._get("/genre/movie/list", {"language": "en"})
+
     def discover(self, page: int = 1, params: dict | None = None) -> dict:
         """Return a TMDB ``/discover/movie`` payload for ``page``.
 

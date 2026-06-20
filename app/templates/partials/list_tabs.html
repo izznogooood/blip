@@ -1,13 +1,14 @@
-{# Top tab navigation. Alpine tracks the active tab for styling; HTMX loads the
-   selected list into #movie-list (page 1), which resets any loaded pages. #}
+{# Top tab navigation and genre controls. Alpine tracks the active tab,
+   active genre, and sort preference; selecting a genre clears the tab highlight,
+   clicking a tab resets the dropdown. #}
 <nav
-  class="flex flex-wrap gap-2 mb-6"
-  x-data="{ active: 'in_theaters' }"
+  class="flex flex-wrap items-center gap-2 mb-6"
+  x-data="{ activeTab: 'in_theaters', activeGenre: '', sortByRating: false }"
 >
   {% for id, label in lists %}
   <button
-    @click="active = '{{ id }}'"
-    :class="active === '{{ id }}'
+    @click="activeTab = '{{ id }}'; activeGenre = ''; sortByRating = false"
+    :class="activeGenre === '' && activeTab === '{{ id }}'
       ? 'bg-slate-100 text-slate-900'
       : 'bg-slate-800 text-slate-300 hover:bg-slate-700'"
     class="rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
@@ -18,4 +19,37 @@
     {{ label }}
   </button>
   {% endfor %}
+
+  {% if genres %}
+  <div class="ml-auto flex items-center gap-3"
+       hx-get="/movies"
+       hx-target="#movie-list"
+       hx-swap="innerHTML"
+       hx-trigger="change from:#genre-select, change from:#sort-checkbox"
+       hx-include="#genre-select, #sort-checkbox">
+    <select id="genre-select"
+      name="genre_id"
+      x-model="activeGenre"
+      @change="activeTab = ''"
+      class="rounded-md bg-slate-800 border border-slate-700 px-3 py-1.5 text-sm text-slate-200 focus:border-slate-500 focus:outline-none"
+    >
+      <option value="">All Genres</option>
+      {% for genre in genres %}
+      <option value="{{ genre.id }}">{{ genre.name }}</option>
+      {% endfor %}
+    </select>
+    <label class="flex items-center gap-1.5 text-sm text-slate-400 cursor-pointer select-none whitespace-nowrap"
+           :class="activeGenre ? 'text-slate-300' : 'text-slate-600'">
+      <input id="sort-checkbox"
+        type="checkbox"
+        name="sort_by_rating"
+        value="true"
+        x-model="sortByRating"
+        class="rounded border-slate-600 bg-slate-800 text-amber-400 focus:ring-0 focus:ring-offset-0"
+        :disabled="!activeGenre"
+      >
+      By rating
+    </label>
+  </div>
+  {% endif %}
 </nav>

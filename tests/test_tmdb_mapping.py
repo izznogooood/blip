@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.clients.tmdb_client import TMDBClient
 from app.main import app
-from app.schemas.movie import Movie
+from app.schemas.movie import Genre, Movie
 from app.services.movie_service import MovieService
 from app.web.routes import get_movie_service
 
@@ -148,3 +148,15 @@ def test_movies_route_unconfigured_shows_message() -> None:
         assert "not configured" in response.text
     finally:
         app.dependency_overrides.clear()
+
+
+def test_genre_from_tmdb() -> None:
+    genre = Genre.from_tmdb({"id": 53, "name": "Thriller"})
+    assert genre.id == 53
+    assert genre.name == "Thriller"
+
+
+def test_genre_from_tmdb_missing_name() -> None:
+    genre = Genre.from_tmdb({"id": 28})
+    assert genre.id == 28
+    assert genre.name == ""

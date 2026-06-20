@@ -15,41 +15,21 @@ Build in small vertical slices. One milestone per session. Keep the app runnable
 | 7. Add and Add + Search | ✅ Complete |
 | 8. Synopsis modal and trailer | ✅ Complete |
 | 9. Polish and tests | ❌ Scrapped |
+| 10. Genre dropdown | ✅ Complete |
 
 ## Handoff notes
 
-- Milestones 1–8 are complete.
-- Milestone 9 was intentionally scrapped.
+- Milestones 1–10 complete.
 - Full milestone details now live in `docs/ARCHIVE.md`.
 - Use this file only for current state and next-step handoff.
-- v1 is complete.
 
 ## Current state
 
-No active milestone.
+Active maintenance and development.
 
-If v2 starts, add a new current milestone section here and keep it short:
-- goal
-- tasks
-- acceptance criteria
+## Handoff — genre dropdown
 
-## Current milestone template
-
-### Milestone X: <Name>
-
-Goal: one sentence
-
-Tasks:
-1. task
-2. task
-3. task
-
-Acceptance criteria:
-- criterion
-- criterion
-- criterion
-
-Notes:
-- Keep this section brief.
-- Move completed detail to `docs/ARCHIVE.md`.
-- Do not expand this file with historical notes.
+- Genre dropdown in tab bar, fetches live from TMDB (cached 24h), 180-day window.
+- "By rating" checkbox toggles sort between newest-first and highest-rated-first.
+- `genre_id` and `sort_by_rating` preserved in Load More and Refresh.
+- Detailed writeup in `docs/ARCHIVE.md`.
