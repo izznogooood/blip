@@ -118,13 +118,13 @@ def _quality_profiles(radarr: RadarrService | None) -> list:
 
 
 def _genre_caption(service: MovieService | None, genre_id: int) -> str | None:
-    """Look up the genre name from the cached genre list for the caption."""
+    """Look up the genre name from the cached genre map for the caption."""
     if service is None:
         return None
     try:
-        for g in service.genres():
-            if g.id == genre_id:
-                return f"{g.name} — new movies released in the last 180 days"
+        name = service.genre_map().get(genre_id)
+        if name:
+            return f"{name} — new movies released in the last 180 days"
     except httpx.HTTPError:
         pass
     return None
