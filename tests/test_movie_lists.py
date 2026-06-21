@@ -1,3 +1,4 @@
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -261,5 +262,93 @@ def test_genre_route_load_more_includes_genre_id() -> None:
             response = tc.get("/movies?genre_id=53&page=1")
         assert "Load More" in response.text
         assert "genre_id=53" in response.text  # Load More preserves genre
+    finally:
+        app.dependency_overrides.clear()
+
+
+class _GenreRaisingClient(_RecordingClient):
+    """Like _RecordingClient but raises on genres()."""
+
+    def genres(self) -> dict:
+        raise httpx.HTTPError("TMDB is down")
+
+
+# --- Missing genre browsing tests (issue #9) ---------------------------------
+
+
+def test_genre_movies_force_refresh() -> None:
+    """force_refresh=True on genre_movies triggers a client call."""
+    client = _RecordingClient()
+    MovieService(client).genre_movies(53, page=1, force_refresh=True)
+    assert client.calls[0][0] == "discover"
+
+
+def test_genre_movies_force_refresh_with_rating_sort() -> None:
+    """force_refresh=True with sort_by_rating=True works correctly."""
+    client = _RecordingClient()
+    MovieService(client).genre_movies(53, page=1, sort_by_rating=True, force_refresh=True)
+    assert client.calls[0][1]["sort_by"] == "vote_average.desc"
+
+
+def test_genre_route_load_more_includes_sort_by_rating() -> None:
+    """Load More URL preserves both genre_id and sort_by_rating."""
+    payload = {
+        "results": [{"id": 1, "title": "Genre Movie"}],
+        "page": 1,
+        "total_pages": 2,
+    }
+    app.dependency_overrides[get_movie_service] = lambda: MovieService(
+        _RecordingClient(payload)
+    )
+    try:
+        with TestClient(app) as tc:
+            response = tc.get("/movies?genre_id=53&sort_by_rating=true&page=1")
+        assert "Load More" in response.text
+        assert "genre_id=53" in response.text
+        assert "sort_by_rating=true" in response.text
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_index_renders_when_genre_fetch_fails() -> None:
+    """Index page renders without genre dropdown when TMDB genre fetch fails."""
+    app.dependency_overrides[get_movie_service] = lambda: MovieService(
+        _GenreRaisingClient()
+    )
+    try:
+        with TestClient(app) as client:
+            response = client.get("/")
+        assert response.status_code == 200
+        assert "All Genres" not in response.text
+        assert "In Theaters" in response.text  # tabs still render
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_index_renders_genre_dropdown() -> None:
+    """Index page renders genre <select> when genres are available."""
+    app.dependency_overrides[get_movie_service] = lambda: MovieService(
+        _RecordingClient()
+    )
+    try:
+        with TestClient(app) as client:
+            response = client.get("/")
+        assert response.status_code == 200
+        assert '<select id="genre-select"' in response.text
+        assert "Action" in response.text
+        assert "Thriller" in response.text
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_genre_checkbox_disabled_binding() -> None:
+    """The By rating checkbox includes the Alpine disabled binding."""
+    app.dependency_overrides[get_movie_service] = lambda: MovieService(
+        _RecordingClient()
+    )
+    try:
+        with TestClient(app) as client:
+            response = client.get("/")
+        assert ':disabled="!activeGenre"' in response.text
     finally:
         app.dependency_overrides.clear()
