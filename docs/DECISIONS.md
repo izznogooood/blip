@@ -167,7 +167,7 @@ Decisions:
   - short handoff notes
   - current state
   - a brief template for the next milestone
-- `ARCHIVE.md` contains the detailed writeup of completed milestones.
+- `ARCHIVES.md` contains the detailed writeup of completed milestones.
 - `DECISIONS.md` contains only lasting architectural decisions.
 - Completed milestone notes should be moved out of the implementation plan.
 - The implementation plan should not accumulate history over time.
