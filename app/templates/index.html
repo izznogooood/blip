@@ -4,6 +4,8 @@
 <section>
   {% include "partials/list_tabs.html" %}
 
+  {# x-init+htmx.ajax (not hx-trigger=load) — deferred Alpine swallows
+     HTMX v2's load trigger timeout. #}
   <div id="movie-list"
        hx-get="/movies?list=in_theaters"
        hx-swap="innerHTML"

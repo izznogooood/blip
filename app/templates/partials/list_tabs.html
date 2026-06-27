@@ -20,6 +20,8 @@
 
   {% if genres %}
   <div class="ml-auto flex items-center gap-3">
+    {# HTMX attrs directly on elements (no from:) — HTMX v2 requires
+       filters before modifiers; from:+filter is silently ignored. #}
     <select id="genre-select"
       name="genre_id"
       x-model="activeGenre"
