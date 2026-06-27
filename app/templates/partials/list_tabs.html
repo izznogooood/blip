@@ -1,9 +1,7 @@
-{# Top tab navigation and genre controls. Alpine tracks the active tab,
-   active genre, and sort preference; selecting a genre clears the tab highlight,
-   clicking a tab resets the dropdown. #}
+{# Desktop tab toolbar and genre controls. Mobile drawer lives in base.html. #}
+{# Alpine state lives on <body> in base.html. #}
 <nav
-  class="flex flex-wrap items-center gap-2 mb-6"
-  x-data="{ activeTab: 'in_theaters', activeGenre: '', sortByRating: false }"
+  class="hidden md:flex flex-wrap items-center gap-2 mb-6"
 >
   {% for id, label in lists %}
   <button
@@ -21,16 +19,18 @@
   {% endfor %}
 
   {% if genres %}
-  <div class="ml-auto flex items-center gap-3"
-       hx-get="/movies"
-       hx-target="#movie-list"
-       hx-swap="innerHTML"
-       hx-trigger="change from:#genre-select, change from:#sort-checkbox"
-       hx-include="#genre-select, #sort-checkbox">
+  <div class="ml-auto flex items-center gap-3">
+    {# HTMX attrs directly on elements (no from:) — HTMX v2 requires
+       filters before modifiers; from:+filter is silently ignored. #}
     <select id="genre-select"
       name="genre_id"
       x-model="activeGenre"
       @change="activeTab = ''"
+      hx-get="/movies"
+      hx-target="#movie-list"
+      hx-swap="innerHTML"
+      hx-trigger="change[this.value != '']"
+      hx-include="#genre-select, #sort-checkbox"
       class="rounded-md bg-slate-800 border border-slate-700 px-3 py-1.5 text-sm text-slate-200 focus:border-slate-500 focus:outline-none"
     >
       <option value="">All Genres</option>
@@ -45,6 +45,11 @@
         name="sort_by_rating"
         value="true"
         x-model="sortByRating"
+        hx-get="/movies"
+        hx-target="#movie-list"
+        hx-swap="innerHTML"
+        hx-trigger="change"
+        hx-include="#genre-select, #sort-checkbox"
         class="rounded border-slate-600 bg-slate-800 text-amber-400 focus:ring-0 focus:ring-offset-0"
         :disabled="!activeGenre"
       >
@@ -53,3 +58,4 @@
   </div>
   {% endif %}
 </nav>
+

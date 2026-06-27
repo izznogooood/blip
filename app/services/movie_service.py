@@ -88,6 +88,13 @@ class MovieService:
         )
         return [Genre.from_tmdb(g) for g in (payload.get("genres") or [])]
 
+    def genre_map(self, *, force_refresh: bool = False) -> dict[int, str]:
+        """Return a lookup dict mapping genre ID → genre name.
+
+        Reuses the cached genre list so no additional API calls are made.
+        """
+        return {g.id: g.name for g in self.genres(force_refresh=force_refresh)}
+
     def genre_movies(
         self, genre_id: int, page: int = 1, *, sort_by_rating: bool = False, force_refresh: bool = False
     ) -> MoviePage:

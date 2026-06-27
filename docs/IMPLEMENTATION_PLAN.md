@@ -16,20 +16,11 @@ Build in small vertical slices. One milestone per session. Keep the app runnable
 | 8. Synopsis modal and trailer | ✅ Complete |
 | 9. Polish and tests | ❌ Scrapped |
 | 10. Genre dropdown | ✅ Complete |
+| 11. Responsive Top Navigation | ✅ Complete |
 
 ## Handoff notes
 
-- Milestones 1–10 complete.
-- Full milestone details now live in `docs/ARCHIVE.md`.
-- Use this file only for current state and next-step handoff.
-
-## Current state
-
-Active maintenance and development.
-
-## Handoff — genre dropdown
-
-- Genre dropdown in tab bar, fetches live from TMDB (cached 24h), 180-day window.
-- "By rating" checkbox toggles sort between newest-first and highest-rated-first.
-- `genre_id` and `sort_by_rating` preserved in Load More and Refresh.
-- Detailed writeup in `docs/ARCHIVE.md`.
+- Milestones 1–11 complete. Two post-milestone bug fixes applied.
+- **Fix #1** (commit `230d6b7`): `hx-trigger="load"` on `#movie-list` doesn't fire when HTMX is deferred alongside Alpine. Replaced with `x-init="$nextTick(() => htmx.ajax(...))"` in `index.html`.
+- **Fix #2** (commit `1fa924c`): HTMX v2.0.3 requires filters `[expr]` immediately after event name, before modifiers. `change from:#genre-select[this.value != '']` was silently broken — moved triggers directly to `<select>`/`<input>` elements.
+- Desktop genre controls now match mobile pattern: each element owns its own HTMX attributes (`hx-get`, `hx-trigger`, `hx-include`). Avoid `from:` modifier in HTMX v2.

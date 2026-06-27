@@ -1,1 +1,4 @@
 /* Blip custom styles. Tailwind (via CDN) handles the bulk of styling for v1. */
+
+/* Hide Alpine-managed content until initialized to prevent flicker. */
+[x-cloak] { display: none !important; }

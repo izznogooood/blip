@@ -7,7 +7,7 @@ Blip is a LAN-hosted movie discovery app: browse TMDB lists, add movies to Radar
 - Do NOT read all docs up front.
 - Read ONLY the current milestone's section in docs/IMPLEMENTATION_PLAN.md.
 - Consult docs/DECISIONS.md or docs/PRD.md only when the milestone touches that area; prefer grep/targeted section reads over full-file reads.
-- docs/ARCHIVE.md holds completed-milestone details — read only if you need history.
+- docs/ARCHIVES.md holds completed-milestone details — read only if you need history.
 
 ## Stack
 
@@ -20,13 +20,15 @@ Jinja2 + HTMX + Alpine.js + Tailwind (CDN). Docker Compose is the run path.
 - No React/Vue/Svelte/Next/Vite/npm pipeline.
 - Modern typing (`str | None`, `list[str]`). Thin routes; HTTP in `clients/`, logic in `services/`.
 - Never expose API keys to browser HTML or logs.
+- HTMX v2 trigger filters `[expr]` must come immediately after the event name, before modifiers like `from:`. Prefer placing triggers directly on the element and omitting `from:`.
+- Avoid `hx-trigger="load"` when HTMX is deferred alongside Alpine — the `setTimeout(0)` callback can be swallowed by Alpine's initialization. Use `x-init="$nextTick(() => htmx.ajax(...))"` instead.
 
 ## Workflow per milestone
 
 1. Read the current milestone section. Briefly state files to create/change.
 2. Implement only that milestone. Run `pytest -q`.
 3. Report: files changed, commands run, assumptions.
-4. On completion: mark milestone ✅ in the plan, move its details to docs/ARCHIVE.md,
+4. On completion: mark milestone ✅ in the plan, move its details to docs/ARCHIVES.md,
    leave max 5 one-line handoff bullets in the plan.
 5. New architectural choice → add a short ADR (≤10 lines) to docs/DECISIONS.md.
 

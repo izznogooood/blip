@@ -74,6 +74,12 @@ def settings_page(
         current_root_folder=resolved.radarr_default_root_folder,
         current_profile_id=resolved.radarr_default_quality_profile_id,
     )
+    # NOTE: Do NOT pass 'lists' or 'genres' to this template context.
+    # base.html uses {% if lists %} / {% if genres %} to conditionally
+    # render the mobile drawer tabs and genre controls. Passing them here
+    # would render list tabs on the settings page, where #movie-list does
+    # not exist — the Alpine fallback redirect would then kick in, creating
+    # a confusing UX (see ADR-017).
     context: dict[str, object] = {
         "app_name": "Blip",
         "row": row,

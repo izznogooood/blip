@@ -16,22 +16,146 @@
   <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}" />
 </head>
 
-<body class="min-h-screen bg-slate-900 text-slate-100">
+<body
+  class="min-h-screen bg-slate-900 text-slate-100"
+  x-data="{ navOpen: false, activeTab: 'in_theaters', activeGenre: '', sortByRating: false }"
+  :class="navOpen ? 'overflow-hidden' : ''"
+  @keydown.escape.window="navOpen = false"
+>
   <header class="border-b border-slate-800">
-    <div class="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
-      <a href="/" class="flex items-center gap-1.5">
-        <span class="text-2xl font-bold tracking-tight">{{ app_name }}</span>
-      </a>
-      <a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer" class="flex items-center gap-1.5">
-        <span class="text-xs text-slate-400">Powered by</span>
-        <img src="{{ url_for('static', path='blue_square.svg') }}" alt="The Movie Database (TMDB)" class="h-3 w-auto" />
-      </a>
-      <a href="/settings"
-        class="rounded-md bg-slate-800 px-3 py-1.5 text-sm font-medium text-slate-300 hover:bg-slate-700">
-        Settings
-      </a>
+    <div class="mx-auto max-w-6xl px-4 py-4">
+      {# Desktop header #}
+      <div class="hidden md:flex items-center justify-between">
+        <a href="/" class="flex items-center gap-1.5">
+          <span class="text-2xl font-bold tracking-tight">{{ app_name }}</span>
+        </a>
+        <a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer" class="flex items-center gap-1.5">
+          <span class="text-xs text-slate-400">Powered by</span>
+          <img src="{{ url_for('static', path='blue_square.svg') }}" alt="The Movie Database (TMDB)" class="h-3 w-auto" />
+        </a>
+        <a href="/settings"
+          class="rounded-md bg-slate-800 px-3 py-1.5 text-sm font-medium text-slate-300 hover:bg-slate-700">
+          Settings
+        </a>
+      </div>
+
+      {# Mobile header #}
+      <div class="flex md:hidden items-center justify-between">
+        <a href="/" class="flex items-center gap-1.5">
+          <span class="text-2xl font-bold tracking-tight">{{ app_name }}</span>
+        </a>
+        <button x-cloak @click="navOpen = !navOpen" class="p-1.5 text-slate-300 hover:text-slate-100 focus:outline-none" aria-label="Toggle navigation">
+          <svg x-show="!navOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+          <svg x-show="navOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
     </div>
   </header>
+
+  {# Mobile drawer backdrop #}
+  <div x-show="navOpen" @click="navOpen = false"
+       class="md:hidden fixed inset-0 z-40 bg-black/50">
+  </div>
+
+  {# Mobile drawer #}
+  <div x-show="navOpen"
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0 -translate-y-2"
+       x-transition:enter-end="opacity-100 translate-y-0"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100 translate-y-0"
+       x-transition:leave-end="opacity-0 -translate-y-2"
+       class="md:hidden fixed inset-x-0 top-0 z-50 bg-slate-900 border-b border-slate-800 shadow-lg max-h-screen overflow-y-auto pt-16">
+    <div class="mx-auto max-w-6xl px-4 py-4 space-y-3">
+      {# Close button #}
+      <div class="flex justify-end">
+        <button @click="navOpen = false" class="p-1 text-slate-400 hover:text-slate-200 focus:outline-none" aria-label="Close navigation">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      {% if lists %}
+      <div class="space-y-1">
+        {% for id, label in lists %}
+        <button
+          @click="document.getElementById('movie-list')
+            ? (activeTab = '{{ id }}', activeGenre = '', sortByRating = false, navOpen = false)
+            : (window.location.href = '/?list={{ id }}')"
+          :class="activeGenre === '' && activeTab === '{{ id }}' && document.getElementById('movie-list')
+            ? 'bg-slate-100 text-slate-900'
+            : 'bg-slate-800 text-slate-300 hover:bg-slate-700'"
+          class="block w-full text-left rounded-md px-3 py-2 text-sm font-medium transition-colors"
+          hx-get="/movies?list={{ id }}"
+          hx-target="#movie-list"
+          hx-swap="innerHTML"
+        >
+          {{ label }}
+        </button>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if genres %}
+      <div class="space-y-2 pt-2 border-t border-slate-800">
+        <select id="genre-select-mobile"
+          name="genre_id"
+          x-model="activeGenre"
+          @change="activeTab = ''"
+          hx-get="/movies"
+          hx-target="#movie-list"
+          hx-swap="innerHTML"
+          hx-trigger="change[this.value != '']"
+          hx-include="#genre-select-mobile, #sort-checkbox-mobile"
+          class="w-full rounded-md bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-200 focus:border-slate-500 focus:outline-none"
+        >
+          <option value="">All Genres</option>
+          {% for genre in genres %}
+          <option value="{{ genre.id }}">{{ genre.name }}</option>
+          {% endfor %}
+        </select>
+        <label class="flex items-center gap-2 text-sm text-slate-400 cursor-pointer select-none"
+               :class="activeGenre ? 'text-slate-300' : 'text-slate-600'">
+          <input id="sort-checkbox-mobile"
+            type="checkbox"
+            name="sort_by_rating"
+            value="true"
+            x-model="sortByRating"
+            hx-get="/movies"
+            hx-target="#movie-list"
+            hx-swap="innerHTML"
+            hx-trigger="change"
+            hx-include="#genre-select-mobile, #sort-checkbox-mobile"
+            class="rounded border-slate-600 bg-slate-800 text-amber-400 focus:ring-0 focus:ring-offset-0"
+            :disabled="!activeGenre"
+          >
+          By rating
+        </label>
+      </div>
+      {% endif %}
+
+      <div class="pt-2 border-t border-slate-800 space-y-2">
+        <a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer"
+           @click="navOpen = false"
+           class="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-300">
+          <span>Powered by</span>
+          <img src="{{ url_for('static', path='blue_square.svg') }}" alt="TMDB" class="h-3 w-auto" />
+        </a>
+        <a href="/settings"
+           @click="navOpen = false"
+           :class="window.location.pathname === '/settings'
+             ? 'block rounded-md bg-slate-100 text-slate-900 px-3 py-2 text-sm font-medium'
+             : 'block rounded-md bg-slate-800 text-slate-300 hover:bg-slate-700 px-3 py-2 text-sm font-medium'">
+          Settings
+        </a>
+      </div>
+    </div>
+  </div>
 
   <main class="mx-auto max-w-6xl px-4 py-8">
     {% block content %}{% endblock %}

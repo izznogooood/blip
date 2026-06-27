@@ -87,3 +87,54 @@ opens YouTube in new tab, hidden when no trailer. 24h detail cache wired. Suite 
 Notes: Add available from modal via shared `partials/_movie_actions.html`; modal success
 closes modal + OOB-updates the grid card (`HX-Retarget`); failure keeps modal open with
 inline error. Radarr library now cached 10 min with UI-driven refresh (ADR-014).
+
+## Milestone 10: Genre Dropdown — ✅
+
+Goal: Add a genre dropdown alongside the existing list tabs so users can browse TMDB genres.
+
+### Changes
+
+- **`app/schemas/movie.py`** — Added `Genre` pydantic model
+- **`app/clients/tmdb_client.py`** — Added `genres()` → `GET /genre/movie/list`
+- **`app/services/movie_service.py`** — Added `genres()` (24h cache), `genre_movies()` with 180-day discover params, `_genre_params()` with optional `sort_by_rating`
+- **`app/web/routes.py`** — `index()` fetches genres for template; `movies()` accepts `genre_id` and `sort_by_rating` query params; caption looked up server-side via `_genre_caption()`
+- **`app/templates/partials/list_tabs.html`** — Genre dropdown and "By rating" checkbox in the tab bar; Alpine tracks `activeTab`, `activeGenre`, `sortByRating`; tab click resets all
+- **`app/templates/partials/_load_more.html`** — Preserves `genre_id` and `sort_by_rating` in Load More URL
+- **`app/templates/partials/movie_grid.html`** — Refresh button preserves genre/sort params
+
+### Key decisions (ADR-016)
+
+- Genres fetched live from TMDB, cached 24h.
+- 180-day lookback window with `primary_release_date.desc` (default) or `vote_average.desc` (toggle).
+- Not added to `MOVIE_LISTS` — separate browsing dimension, doesn't pollute Top Rated.
+- Dropdown uses HTMX attributes (`hx-trigger="change[this.value != '']"`); sort checkbox uses `hx-include` paired with container-level `hx-trigger`.
+
+### Tests added
+
+- Genre model mapping (normal + missing name)
+- Genre movie dispatch (discover, 180-day window, default sort, rating sort)
+- Genre route (caption, Load More preserves genre_id)
+
+### Post-milestone fix (commit `1fa924c`)
+
+**Bug**: Desktop genre trigger `change from:#genre-select[this.value != '']` was syntactically invalid in HTMX v2.0.3 — the parser requires filters `[expr]` immediately after the event name, before modifiers. The `from:` value swallowed `#genre-select[this.value` and remaining tokens caused a silent parser error.
+
+**Fix**: Moved `hx-get`, `hx-target`, `hx-swap`, `hx-trigger`, `hx-include` directly onto the `<select>` and `<input>` elements (matching mobile pattern). No `from:` modifier needed; `this` in filter refers to the element itself.
+
+## Milestone 11: Responsive Top Navigation — ✅
+
+Goal: Redesign top navigation for desktop, tablet, and phone viewports while preserving all existing functionality.
+
+### Changes
+
+- **`app/templates/base.html`** — Responsive header: desktop row (`hidden md:flex`) shows Blip / TMDB / Settings inline; mobile row (`flex md:hidden`) shows Blip + hamburger/X SVG toggle. Alpine `x-data` moved to `<body>` (`navOpen`, `activeTab`, `activeGenre`, `sortByRating`) with body scroll lock (`:class="navOpen ? 'overflow-hidden' : ''"`) and ESC key handler. Mobile drawer (fixed overlay, slide-down transition, backdrop, explicit close button) with all nav items: 5 tabs, genre select (`#genre-select-mobile`), rating checkbox (`#sort-checkbox-mobile`), TMDB attribution, Settings link. Tabs check `document.getElementById('movie-list')` — if absent (settings page), redirect to `/?list=X` instead of HTMX. Settings link shows active state via `window.location.pathname`.
+- **`app/templates/partials/list_tabs.html`** — Removed `x-data` (inherits from `<body>`). Nav gets `hidden md:flex` (desktop-only).
+- **`app/static/app.css`** — Added `[x-cloak] { display: none !important; }` for Alpine flicker prevention.
+- **`app/web/settings_routes.py`** — Added `MOVIE_LISTS` to settings page template context so drawer tabs render on the settings page.
+
+### Post-milestone fix (commit `230d6b7`)
+
+**Bug**: `hx-trigger="load"` on `#movie-list` (`index.html`) does not fire reliably on initial page load. Root cause: timing issue between HTMX v2's deferred `load` trigger and Alpine's initialization on `<body>` — Alpine's startup triggers HTMX's `MutationObserver`, swallowing the queued `load` callback.
+
+**Fix**: Replaced with Alpine `x-init="$nextTick(() => htmx.ajax('GET', '/movies?list=in_theaters', {target: '#movie-list', swap: 'innerHTML'}))"`. `$nextTick` defers the call until after Alpine finishes its DOM reconciliation.
+
