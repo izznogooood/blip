@@ -114,3 +114,15 @@ Goal: Add a genre dropdown alongside the existing list tabs so users can browse 
 - Genre model mapping (normal + missing name)
 - Genre movie dispatch (discover, 180-day window, default sort, rating sort)
 - Genre route (caption, Load More preserves genre_id)
+
+## Milestone 11: Responsive Top Navigation — ✅
+
+Goal: Redesign top navigation for desktop, tablet, and phone viewports while preserving all existing functionality.
+
+### Changes
+
+- **`app/templates/base.html`** — Responsive header: desktop row (`hidden md:flex`) shows Blip / TMDB / Settings inline; mobile row (`flex md:hidden`) shows Blip + hamburger/X SVG toggle. Alpine `x-data` moved to `<body>` (`navOpen`, `activeTab`, `activeGenre`, `sortByRating`) with body scroll lock (`:class="navOpen ? 'overflow-hidden' : ''"`) and ESC key handler. Mobile drawer (fixed overlay, slide-down transition, backdrop, explicit close button) with all nav items: 5 tabs, genre select (`#genre-select-mobile`), rating checkbox (`#sort-checkbox-mobile`), TMDB attribution, Settings link. Tabs check `document.getElementById('movie-list')` — if absent (settings page), redirect to `/?list=X` instead of HTMX. Settings link shows active state via `window.location.pathname`.
+- **`app/templates/partials/list_tabs.html`** — Removed `x-data` (inherits from `<body>`). Nav gets `hidden md:flex` (desktop-only).
+- **`app/static/app.css`** — Added `[x-cloak] { display: none !important; }` for Alpine flicker prevention.
+- **`app/web/settings_routes.py`** — Added `MOVIE_LISTS` to settings page template context so drawer tabs render on the settings page.
+

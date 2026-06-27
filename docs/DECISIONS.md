@@ -184,3 +184,11 @@ Decisions:
 - The dropdown uses Alpine.js for local state (active tab vs active genre) and HTMX for server requests via `htmx.ajax()`.
 - Genre name is looked up server-side from the cached genre list for the grid caption.
 - Load More preserves the `genre_id` query parameter.
+
+## ADR-017 Responsive top navigation
+
+- Breakpoint at `md` (768px). Desktop is two-row header; mobile is hamburger + overlay drawer.
+- Alpine state shared via `<body>` scope so desktop and mobile navs stay synced without duplication.
+- Mobile form controls use `-mobile` ID suffix with their own HTMX `hx-get`/`hx-include` — no ID collision, no double requests (hidden DOM elements can't fire change events).
+- Drawer lives in `base.html` (not `list_tabs.html`) so it's available on all pages including settings.
+- `x-cloak` prevents flash of unstyled SVG toggle icons before Alpine initializes.
