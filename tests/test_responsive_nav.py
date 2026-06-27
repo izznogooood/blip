@@ -256,6 +256,36 @@ def test_desktop_genre_select_filters_empty_value() -> None:
         app.dependency_overrides.clear()
 
 
+def test_desktop_genre_select_has_htmx_attributes() -> None:
+    """Desktop genre <select> carries its own HTMX attributes (no from:)."""
+    app.dependency_overrides[get_movie_service] = lambda: MovieService(_GenreStub())
+    try:
+        with TestClient(app) as client:
+            resp = client.get("/")
+        assert 'id="genre-select"' in resp.text
+        assert 'hx-get="/movies"' in resp.text
+        assert 'hx-target="#movie-list"' in resp.text
+        assert 'hx-trigger="change[this.value != \'\']"' in resp.text
+        assert 'hx-include="#genre-select, #sort-checkbox"' in resp.text
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_desktop_sort_checkbox_has_htmx_attributes() -> None:
+    """Desktop sort checkbox carries its own HTMX attributes (no from:)."""
+    app.dependency_overrides[get_movie_service] = lambda: MovieService(_GenreStub())
+    try:
+        with TestClient(app) as client:
+            resp = client.get("/")
+        assert 'id="sort-checkbox"' in resp.text
+        assert 'hx-get="/movies"' in resp.text
+        assert 'hx-target="#movie-list"' in resp.text
+        assert 'hx-trigger="change"' in resp.text
+        assert 'hx-include="#genre-select, #sort-checkbox"' in resp.text
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_mobile_genre_controls_share_hx_include() -> None:
     """Mobile genre select and checkbox both include each other."""
     app.dependency_overrides[get_movie_service] = lambda: MovieService(_GenreStub())
