@@ -251,7 +251,7 @@ def test_desktop_genre_select_filters_empty_value() -> None:
     try:
         with TestClient(app) as client:
             resp = client.get("/")
-        assert 'from:#genre-select[this.value != \'\']' in resp.text
+        assert 'hx-trigger="change[this.value != \'\']"' in resp.text
     finally:
         app.dependency_overrides.clear()
 
