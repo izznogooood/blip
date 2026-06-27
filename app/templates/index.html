@@ -4,12 +4,10 @@
 <section>
   {% include "partials/list_tabs.html" %}
 
-  <div
-    id="movie-list"
-    hx-get="/movies?list=in_theaters"
-    hx-trigger="load"
-    hx-swap="innerHTML"
-  >
+  <div id="movie-list"
+       hx-get="/movies?list=in_theaters"
+       hx-swap="innerHTML"
+       x-init="$nextTick(() => htmx.ajax('GET', '/movies?list=in_theaters', {target: '#movie-list', swap: 'innerHTML'}))">
     <div class="text-slate-400 py-8 text-center">Loading movies…</div>
   </div>
 
