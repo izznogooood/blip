@@ -102,13 +102,6 @@ Goal: Add a genre dropdown alongside the existing list tabs so users can browse 
 - **`app/templates/partials/_load_more.html`** — Preserves `genre_id` and `sort_by_rating` in Load More URL
 - **`app/templates/partials/movie_grid.html`** — Refresh button preserves genre/sort params
 
-### Key decisions (ADR-016)
-
-- Genres fetched live from TMDB, cached 24h.
-- 180-day lookback window with `primary_release_date.desc` (default) or `vote_average.desc` (toggle).
-- Not added to `MOVIE_LISTS` — separate browsing dimension, doesn't pollute Top Rated.
-- Dropdown uses HTMX attributes (`hx-trigger="change[this.value != '']"`); sort checkbox uses `hx-include` paired with container-level `hx-trigger`.
-
 ### Tests added
 
 - Genre model mapping (normal + missing name)
