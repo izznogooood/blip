@@ -23,7 +23,7 @@
        hx-get="/movies"
        hx-target="#movie-list"
        hx-swap="innerHTML"
-       hx-trigger="change from:#genre-select, change from:#sort-checkbox"
+       hx-trigger="change from:#genre-select[this.value != ''], change from:#sort-checkbox"
        hx-include="#genre-select, #sort-checkbox">
     <select id="genre-select"
       name="genre_id"

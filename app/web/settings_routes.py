@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 from app.clients.radarr_client import RadarrClient
 from app.core.database import get_session
 from app.schemas.settings import MINIMUM_AVAILABILITY_OPTIONS
-from app.services.movie_service import MOVIE_LISTS
 from app.services.radarr_service import RadarrService
 from app.services.settings_service import SettingsService
 
@@ -77,7 +76,6 @@ def settings_page(
     )
     context: dict[str, object] = {
         "app_name": "Blip",
-        "lists": MOVIE_LISTS,
         "row": row,
         "resolved": resolved,
         "minimum_availability_options": MINIMUM_AVAILABILITY_OPTIONS,

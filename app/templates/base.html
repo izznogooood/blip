@@ -110,7 +110,7 @@
           hx-get="/movies"
           hx-target="#movie-list"
           hx-swap="innerHTML"
-          hx-trigger="change"
+          hx-trigger="change[this.value != '']"
           hx-include="#genre-select-mobile, #sort-checkbox-mobile"
           class="w-full rounded-md bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-200 focus:border-slate-500 focus:outline-none"
         >
