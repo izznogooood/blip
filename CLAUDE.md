@@ -20,6 +20,8 @@ Jinja2 + HTMX + Alpine.js + Tailwind (CDN). Docker Compose is the run path.
 - No React/Vue/Svelte/Next/Vite/npm pipeline.
 - Modern typing (`str | None`, `list[str]`). Thin routes; HTTP in `clients/`, logic in `services/`.
 - Never expose API keys to browser HTML or logs.
+- HTMX v2 trigger filters `[expr]` must come immediately after the event name, before modifiers like `from:`. Prefer placing triggers directly on the element and omitting `from:`.
+- Avoid `hx-trigger="load"` when HTMX is deferred alongside Alpine — the `setTimeout(0)` callback can be swallowed by Alpine's initialization. Use `x-init="$nextTick(() => htmx.ajax(...))"` instead.
 
 ## Workflow per milestone
 

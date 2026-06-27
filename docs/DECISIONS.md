@@ -192,3 +192,11 @@ Decisions:
 - Mobile form controls use `-mobile` ID suffix with their own HTMX `hx-get`/`hx-include` — no ID collision, no double requests (hidden DOM elements can't fire change events).
 - Drawer lives in `base.html` (not `list_tabs.html`) so it's available on all pages including settings.
 - `x-cloak` prevents flash of unstyled SVG toggle icons before Alpine initializes.
+
+## ADR-018: HTMX v2 trigger compatibility
+
+Lessons from two post-milestone bugs:
+
+1. **Avoid `hx-trigger="load"` when HTMX is deferred alongside Alpine**: the `load` trigger uses `setTimeout(0)` internally, which can be swallowed by Alpine's initialization triggering HTMX's `MutationObserver`. Use Alpine `x-init="$nextTick(() => htmx.ajax(...))"` instead for initial-load requests.
+
+2. **Filters must precede modifiers**: HTMX v2.0.3 parses trigger specs with the filter `[expr]` expected immediately after the event name. `change from:#el[filter]` is invalid — the `from:` value swallows everything up to the next whitespace. Write `change[filter] from:#el` or (simpler) put triggers directly on the element and omit `from:`.

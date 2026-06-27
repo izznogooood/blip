@@ -115,6 +115,12 @@ Goal: Add a genre dropdown alongside the existing list tabs so users can browse 
 - Genre movie dispatch (discover, 180-day window, default sort, rating sort)
 - Genre route (caption, Load More preserves genre_id)
 
+### Post-milestone fix (commit `1fa924c`)
+
+**Bug**: Desktop genre trigger `change from:#genre-select[this.value != '']` was syntactically invalid in HTMX v2.0.3 — the parser requires filters `[expr]` immediately after the event name, before modifiers. The `from:` value swallowed `#genre-select[this.value` and remaining tokens caused a silent parser error.
+
+**Fix**: Moved `hx-get`, `hx-target`, `hx-swap`, `hx-trigger`, `hx-include` directly onto the `<select>` and `<input>` elements (matching mobile pattern). No `from:` modifier needed; `this` in filter refers to the element itself.
+
 ## Milestone 11: Responsive Top Navigation — ✅
 
 Goal: Redesign top navigation for desktop, tablet, and phone viewports while preserving all existing functionality.
@@ -125,4 +131,10 @@ Goal: Redesign top navigation for desktop, tablet, and phone viewports while pre
 - **`app/templates/partials/list_tabs.html`** — Removed `x-data` (inherits from `<body>`). Nav gets `hidden md:flex` (desktop-only).
 - **`app/static/app.css`** — Added `[x-cloak] { display: none !important; }` for Alpine flicker prevention.
 - **`app/web/settings_routes.py`** — Added `MOVIE_LISTS` to settings page template context so drawer tabs render on the settings page.
+
+### Post-milestone fix (commit `230d6b7`)
+
+**Bug**: `hx-trigger="load"` on `#movie-list` (`index.html`) does not fire reliably on initial page load. Root cause: timing issue between HTMX v2's deferred `load` trigger and Alpine's initialization on `<body>` — Alpine's startup triggers HTMX's `MutationObserver`, swallowing the queued `load` callback.
+
+**Fix**: Replaced with Alpine `x-init="$nextTick(() => htmx.ajax('GET', '/movies?list=in_theaters', {target: '#movie-list', swap: 'innerHTML'}))"`. `$nextTick` defers the call until after Alpine finishes its DOM reconciliation.
 

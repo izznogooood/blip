@@ -20,9 +20,7 @@ Build in small vertical slices. One milestone per session. Keep the app runnable
 
 ## Handoff notes
 
-- Milestones 1–11 complete.
-- Full milestone details now live in `docs/ARCHIVES.md`.
-- Mobile: hamburger drawer with all nav items (tabs, genre/rating, TMDB, Settings).
-- Desktop: two-row header — brand/TMDB/settings above, tabs + genre controls below.
-- Settings page has drawer tabs too (redirects to `/?list=X` since `#movie-list` absent).
-- Alpine state on `<body>`; mobile controls use `-mobile` ID suffix; `x-cloak` prevents flicker.
+- Milestones 1–11 complete. Two post-milestone bug fixes applied.
+- **Fix #1** (commit `230d6b7`): `hx-trigger="load"` on `#movie-list` doesn't fire when HTMX is deferred alongside Alpine. Replaced with `x-init="$nextTick(() => htmx.ajax(...))"` in `index.html`.
+- **Fix #2** (commit `1fa924c`): HTMX v2.0.3 requires filters `[expr]` immediately after event name, before modifiers. `change from:#genre-select[this.value != '']` was silently broken — moved triggers directly to `<select>`/`<input>` elements.
+- Desktop genre controls now match mobile pattern: each element owns its own HTMX attributes (`hx-get`, `hx-trigger`, `hx-include`). Avoid `from:` modifier in HTMX v2.
