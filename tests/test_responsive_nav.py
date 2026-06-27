@@ -295,8 +295,7 @@ def test_body_has_scroll_lock_binding() -> None:
     """<body> has :class binding for overflow-hidden when nav is open."""
     with TestClient(app) as client:
         resp = client.get("/")
-    assert ":class=" in resp.text or ':class="' in resp.text
-    assert "overflow-hidden" in resp.text
+    assert ':class="navOpen ? \'overflow-hidden\' : \'\'"' in resp.text
 
 
 def test_body_has_escape_key_handler() -> None:

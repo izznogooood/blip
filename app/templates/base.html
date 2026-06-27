@@ -44,7 +44,7 @@
         <a href="/" class="flex items-center gap-1.5">
           <span class="text-2xl font-bold tracking-tight">{{ app_name }}</span>
         </a>
-        <button @click="navOpen = !navOpen" class="p-1.5 text-slate-300 hover:text-slate-100 focus:outline-none" aria-label="Toggle navigation">
+        <button x-cloak @click="navOpen = !navOpen" class="p-1.5 text-slate-300 hover:text-slate-100 focus:outline-none" aria-label="Toggle navigation">
           <svg x-show="!navOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
