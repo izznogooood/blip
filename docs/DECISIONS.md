@@ -1,5 +1,27 @@
 # Architecture Decisions
 
+Index (grep to the ADR you need; don't read the whole file):
+
+- ADR-001 — Backend-first architecture (Jinja2 + HTMX + Alpine + Tailwind, no JS build)
+- ADR-002 — Python backend, modern typing
+- ADR-003 — Integration boundaries (clients = HTTP, services = logic, thin routes)
+- ADR-004 — Docker-first deployment
+- ADR-005 — KISS principle
+- ADR-006 — ORM choice: SQLAlchemy 2.x
+- ADR-007 — Tailwind delivery: CDN only for v1
+- ADR-008 — TMDB endpoints per movie list
+- ADR-009 — TMDB response caching: generic key-value table, epoch TTL
+- ADR-010 — Radarr read integration: status mapping and merge
+- ADR-011 — Settings storage: single typed row, env fallback
+- ADR-012 — Radarr add: lookup-then-post, search via addOptions
+- ADR-013 — Synopsis modal: HTMX partial, append_to_response videos
+- ADR-014 — Radarr library caching: 10-minute TTL with UI-driven refresh
+- ADR-015 — Documentation structure: short current-state files, archive for history
+- ADR-016 — Genre discovery: live genre list, 180-day window, tabs+dropdown coexistence
+- ADR-017 — Responsive top navigation
+- ADR-018 — HTMX v2 trigger compatibility
+- ADR-019 — Cross-tool agent instructions: single source via symlink
+
 ## ADR-001: Backend-first architecture
 
 Blip uses a backend-first server-rendered architecture.
@@ -200,3 +222,12 @@ Lessons from two post-milestone bugs:
 1. **Avoid `hx-trigger="load"` when HTMX is deferred alongside Alpine**: the `load` trigger uses `setTimeout(0)` internally, which can be swallowed by Alpine's initialization triggering HTMX's `MutationObserver`. Use Alpine `x-init="$nextTick(() => htmx.ajax(...))"` instead for initial-load requests.
 
 2. **Filters must precede modifiers**: HTMX v2.0.3 parses trigger specs with the filter `[expr]` expected immediately after the event name. `change from:#el[filter]` is invalid — the `from:` value swallows everything up to the next whitespace. Write `change[filter] from:#el` or (simpler) put triggers directly on the element and omit `from:`.
+
+## ADR-019: Cross-tool agent instructions — single source via symlink
+
+`CLAUDE.md` is the one source of project instructions for AI coding tools. `AGENTS.md` is a symlink to it so opencode (and other AGENTS.md-aware tools) read the same content with zero duplication.
+
+Decisions:
+
+- Do not maintain a separate `AGENTS.md` — keep it a symlink to avoid drift.
+- Edit instructions in `CLAUDE.md` only.

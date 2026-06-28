@@ -20,7 +20,5 @@ Build in small vertical slices. One milestone per session. Keep the app runnable
 
 ## Handoff notes
 
-- Milestones 1–11 complete. Two post-milestone bug fixes applied.
-- **Fix #1** (commit `230d6b7`): `hx-trigger="load"` on `#movie-list` doesn't fire when HTMX is deferred alongside Alpine. Replaced with `x-init="$nextTick(() => htmx.ajax(...))"` in `index.html`.
-- **Fix #2** (commit `1fa924c`): HTMX v2.0.3 requires filters `[expr]` immediately after event name, before modifiers. `change from:#genre-select[this.value != '']` was silently broken — moved triggers directly to `<select>`/`<input>` elements.
-- Desktop genre controls now match mobile pattern: each element owns its own HTMX attributes (`hx-get`, `hx-trigger`, `hx-include`). Avoid `from:` modifier in HTMX v2.
+- Milestones 1–11 complete. Two post-milestone HTMX v2 bug fixes applied (commits `230d6b7`, `1fa924c`) — see ADR-018 in docs/DECISIONS.md for the rules and rationale.
+- Desktop genre controls now match the mobile pattern: each element owns its own HTMX attributes (`hx-get`, `hx-trigger`, `hx-include`); avoid the `from:` modifier in HTMX v2.
