@@ -5,10 +5,10 @@
   {% include "partials/list_tabs.html" %}
 
   {# x-init+htmx.ajax (not hx-trigger=load) — deferred Alpine swallows
-     HTMX v2's load trigger timeout. #}
+     HTMX v2's load trigger timeout. No hx-get/hx-swap on this div: HTMX's
+     default trigger for a <div> is `click`, so a bubbled click (e.g. opening a
+     movie modal) would re-fetch and reset the grid. #}
   <div id="movie-list"
-       hx-get="/movies?list=in_theaters"
-       hx-swap="innerHTML"
        x-init="$nextTick(() => htmx.ajax('GET', '/movies?list=in_theaters', {target: '#movie-list', swap: 'innerHTML'}))">
     <div class="text-slate-400 py-8 text-center">Loading movies…</div>
   </div>

@@ -12,7 +12,7 @@
   {# Manual refresh: reloads page 1 with refresh=true, bypassing the cache. #}
   <button
     class="shrink-0 rounded-md bg-slate-800 hover:bg-slate-700 px-3 py-1.5 text-sm font-medium text-slate-300"
-    hx-get="/movies?{% if genre_id %}genre_id={{ genre_id }}{% else %}list={{ list_id }}{% endif %}{% if sort_by_rating %}&sort_by_rating=true{% endif %}&refresh=true"
+    hx-get="/movies?{% if query %}query={{ query|urlencode }}{% elif genre_id %}genre_id={{ genre_id }}{% else %}list={{ list_id }}{% endif %}{% if sort_by_rating %}&sort_by_rating=true{% endif %}&refresh=true"
     hx-target="#movie-list"
     hx-swap="innerHTML"
   >

@@ -5,7 +5,7 @@
   {% if page_data and page_data.has_more %}
   <button
     class="rounded-md bg-slate-700 hover:bg-slate-600 px-5 py-2 font-medium"
-    hx-get="/movies?{% if genre_id %}genre_id={{ genre_id }}{% else %}list={{ list_id }}{% endif %}{% if sort_by_rating %}&sort_by_rating=true{% endif %}&page={{ page_data.page + 1 }}"
+    hx-get="/movies?{% if query %}query={{ query|urlencode }}{% elif genre_id %}genre_id={{ genre_id }}{% else %}list={{ list_id }}{% endif %}{% if sort_by_rating %}&sort_by_rating=true{% endif %}&page={{ page_data.page + 1 }}"
     hx-target="#movie-cards"
     hx-swap="beforeend"
   >
