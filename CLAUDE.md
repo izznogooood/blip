@@ -23,14 +23,24 @@ Jinja2 + HTMX + Alpine.js + Tailwind (CDN). Docker Compose is the run path.
 - HTMX v2 trigger filters `[expr]` must come immediately after the event name, before modifiers like `from:`. Prefer placing triggers directly on the element and omitting `from:`.
 - Avoid `hx-trigger="load"` when HTMX is deferred alongside Alpine — the `setTimeout(0)` callback can be swallowed by Alpine's initialization. Use `x-init="$nextTick(() => htmx.ajax(...))"` instead.
 
-## Workflow per milestone
+## Workflow
 
-1. Read the current milestone section. Briefly state files to create/change.
-2. Implement only that milestone. Run `pytest -q`.
+v1 (milestones 1–11) is complete. Default to the lightweight path; use the milestone
+path only when starting a planned milestone.
+
+**Default (bugfix / small feature):**
+1. State the files you'll touch.
+2. Implement. Run `pytest -q`.
 3. Report: files changed, commands run, assumptions.
-4. On completion: mark milestone ✅ in the plan, move its details to docs/ARCHIVES.md,
-   leave max 5 one-line handoff bullets in the plan.
-5. New architectural choice → add a short ADR (≤10 lines) to docs/DECISIONS.md.
+
+**Milestone path (starting a planned milestone):**
+1. Read the current milestone section in docs/IMPLEMENTATION_PLAN.md. State files to create/change.
+2. Implement only that milestone. Run `pytest -q`.
+3. On completion: mark milestone ✅ in the plan, move details to docs/ARCHIVES.md,
+   leave max 5 one-line handoff bullets.
+
+**Either path:** a new architectural choice → add a short ADR (≤10 lines) to
+docs/DECISIONS.md and a one-line entry to its index.
 
 ## Out of scope (v1)
 

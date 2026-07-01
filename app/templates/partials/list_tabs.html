@@ -5,7 +5,7 @@
 >
   {% for id, label in lists %}
   <button
-    @click="activeTab = '{{ id }}'; activeGenre = ''; sortByRating = false"
+    @click="activeTab = '{{ id }}'; activeGenre = ''; sortByRating = false; searchQuery = ''"
     :class="activeGenre === '' && activeTab === '{{ id }}'
       ? 'bg-slate-100 text-slate-900'
       : 'bg-slate-800 text-slate-300 hover:bg-slate-700'"
@@ -18,14 +18,31 @@
   </button>
   {% endfor %}
 
-  {% if genres %}
   <div class="ml-auto flex items-center gap-3">
+    {# Title search: a non-empty query takes over the grid. HTMX v2 trigger
+       filter [expr] comes immediately after the event name, before modifiers. #}
+    <input id="search-input"
+      name="query"
+      type="search"
+      placeholder="Search movies…"
+      x-model="searchQuery"
+      @keyup="if ($event.target.value.trim()) { activeTab = ''; activeGenre = ''; }"
+      hx-get="/movies"
+      hx-target="#movie-list"
+      hx-swap="innerHTML"
+      hx-trigger="keyup[this.value.trim().length > 1] changed delay:400ms, search"
+      class="rounded-md bg-slate-800 border border-slate-700 px-3 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:border-slate-500 focus:outline-none"
+    >
+  </div>
+
+  {% if genres %}
+  <div class="flex items-center gap-3">
     {# HTMX attrs directly on elements (no from:) — HTMX v2 requires
        filters before modifiers; from:+filter is silently ignored. #}
     <select id="genre-select"
       name="genre_id"
       x-model="activeGenre"
-      @change="activeTab = ''"
+      @change="activeTab = ''; searchQuery = ''"
       hx-get="/movies"
       hx-target="#movie-list"
       hx-swap="innerHTML"

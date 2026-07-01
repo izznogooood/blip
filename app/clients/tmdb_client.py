@@ -53,6 +53,18 @@ class TMDBClient:
         """Return the TMDB genre list payload."""
         return self._get("/genre/movie/list", {"language": "en"})
 
+    def search(self, query: str, page: int = 1) -> dict:
+        """Return the TMDB ``/search/movie`` payload for a title query."""
+        return self._get(
+            "/search/movie",
+            {
+                "query": query,
+                "page": page,
+                "region": self._region,
+                "include_adult": "false",
+            },
+        )
+
     def discover(self, page: int = 1, params: dict | None = None) -> dict:
         """Return a TMDB ``/discover/movie`` payload for ``page``.
 

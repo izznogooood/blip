@@ -29,3 +29,16 @@ def test_movie_list_has_x_init_for_initial_load() -> None:
     assert "$nextTick" in response.text
     assert "htmx.ajax" in response.text
     assert "hx-trigger=\"load\"" not in response.text
+
+
+def test_movie_list_div_has_no_click_triggerable_hx_get() -> None:
+    """#movie-list must not carry a bare hx-get.
+
+    HTMX's default trigger for a <div> is `click`, so an hx-get on the grid
+    container would re-fetch (and reset) the grid whenever a bubbled click —
+    such as opening a movie modal — reaches it. The initial load is driven by
+    x-init/htmx.ajax instead.
+    """
+    response = client.get("/")
+    div = response.text.split('id="movie-list"', 1)[1].split(">", 1)[0]
+    assert "hx-get" not in div

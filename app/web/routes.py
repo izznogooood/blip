@@ -138,26 +138,32 @@ def movies(
     refresh: bool = False,
     genre_id: int | None = None,
     sort_by_rating: bool = False,
+    query: str | None = None,
     session: Session = Depends(get_session),
     service: MovieService | None = Depends(get_movie_service),
     radarr: RadarrService | None = Depends(get_radarr_service),
 ) -> HTMLResponse:
-    """Return a movie grid partial for the given list or genre (HTMX endpoint).
+    """Return a movie grid partial for a search, list, or genre (HTMX endpoint).
 
-    When ``genre_id`` is provided the grid shows movies from that genre;
-    otherwise it shows a named list. Page 1 returns the full grid; later pages
-    return an append fragment.
+    A non-empty ``query`` searches by title and takes precedence; otherwise
+    ``genre_id`` shows a genre and a bare request shows a named list. Page 1
+    returns the full grid; later pages return an append fragment.
     """
     resolved = SettingsService(session).resolve()
+    q = (query or "").strip()
+    _source = f"query={q}" if q else f"list={list}"
     context: dict[str, object] = {
         "movies": [],
         "error": None,
         "list_id": list,
         "genre_id": genre_id,
         "sort_by_rating": sort_by_rating,
+        "query": q or None,
         "page_data": None,
         "caption": (
-            _genre_caption(service, genre_id)
+            f"Showing results for “{q}”"
+            if q
+            else _genre_caption(service, genre_id)
             if genre_id
             else LIST_DESCRIPTIONS.get(list)
         ),
@@ -170,14 +176,16 @@ def movies(
         return templates.TemplateResponse(request, "partials/movie_grid.html", context)
 
     try:
-        if genre_id:
+        if q:
+            page_data = service.search(q, page=page, force_refresh=refresh)
+        elif genre_id:
             page_data = service.genre_movies(genre_id, page=page, sort_by_rating=sort_by_rating, force_refresh=refresh)
         else:
             page_data = service.movies(list, page=page, force_refresh=refresh)
         _annotate_radarr(
             page_data.movies,
             radarr,
-            list_id=list,
+            list_id="search" if q else list,
             page=page,
             force_refresh=refresh or page <= 1,
         )
@@ -192,10 +200,10 @@ def movies(
     except httpx.HTTPStatusError as exc:
         # Log status + path only — never the full URL, which carries the API key.
         logger.warning(
-            "TMDB request failed: HTTP %s for %s (list=%s page=%s)",
+            "TMDB request failed: HTTP %s for %s (%s page=%s)",
             exc.response.status_code,
             exc.request.url.path,
-            list,
+            _source,
             page,
         )
         if exc.response.status_code == 401:
@@ -204,9 +212,9 @@ def movies(
             context["error"] = "Could not load movies from TMDB right now."
     except httpx.HTTPError as exc:
         logger.warning(
-            "TMDB request failed: %s (list=%s page=%s)",
+            "TMDB request failed: %s (%s page=%s)",
             type(exc).__name__,
-            list,
+            _source,
             page,
         )
         context["error"] = "Could not load movies from TMDB right now."

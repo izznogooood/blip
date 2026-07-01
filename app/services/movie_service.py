@@ -109,6 +109,23 @@ class MovieService:
         )
         return MoviePage.from_tmdb(payload)
 
+    def search(
+        self, query: str, page: int = 1, *, force_refresh: bool = False
+    ) -> MoviePage:
+        """Fetch one page of TMDB search results for a title query.
+
+        Cached per (normalised query, page) so paging back and forth and
+        repeated searches don't re-hit TMDB.
+        """
+        normalized = query.strip()
+        cache_key = f"tmdb:search:{normalized.lower()}:{page}"
+        payload = self._cached(
+            cache_key,
+            lambda: self._client.search(normalized, page=page),
+            force_refresh,
+        )
+        return MoviePage.from_tmdb(payload)
+
     def details(self, movie_id: int, *, force_refresh: bool = False) -> MovieDetail:
         """Fetch a movie's details (overview, trailer) for the synopsis modal.
 

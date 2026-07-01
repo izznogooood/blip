@@ -8,6 +8,18 @@
 
 Blip is a LAN-hosted movie discovery app that lets the user browse movie lists and add selected movies directly to Radarr from one clean interface.
 
+#### Section index
+
+Reference spec — grep to the section you need rather than reading the whole file.
+(Section 5/6 were folded into others; numbering preserved for historical links.)
+
+1. Background · 2. Goals · 3. Non-goals / out of scope · 4. Target environment ·
+7. Architecture decision · 8. Core user flow · 9. Movie lists · 10. Sorting and
+pagination · 11. Movie card requirements · 12. Radarr integration · 13. Settings ·
+14. Caching · 15. Persistence · 16. Error handling · 17. Security assumptions ·
+18. Suggested backend layering · 19. API integration assumptions · 20. UI requirements ·
+21. Testing requirements · 22. Docker requirements · 23. Acceptance criteria
+
 ---
 
 ### 1. Background
