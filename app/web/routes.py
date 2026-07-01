@@ -151,6 +151,7 @@ def movies(
     """
     resolved = SettingsService(session).resolve()
     q = (query or "").strip()
+    _source = f"query={q}" if q else f"list={list}"
     context: dict[str, object] = {
         "movies": [],
         "error": None,
@@ -199,10 +200,10 @@ def movies(
     except httpx.HTTPStatusError as exc:
         # Log status + path only — never the full URL, which carries the API key.
         logger.warning(
-            "TMDB request failed: HTTP %s for %s (list=%s page=%s)",
+            "TMDB request failed: HTTP %s for %s (%s page=%s)",
             exc.response.status_code,
             exc.request.url.path,
-            list,
+            _source,
             page,
         )
         if exc.response.status_code == 401:
@@ -211,9 +212,9 @@ def movies(
             context["error"] = "Could not load movies from TMDB right now."
     except httpx.HTTPError as exc:
         logger.warning(
-            "TMDB request failed: %s (list=%s page=%s)",
+            "TMDB request failed: %s (%s page=%s)",
             type(exc).__name__,
-            list,
+            _source,
             page,
         )
         context["error"] = "Could not load movies from TMDB right now."

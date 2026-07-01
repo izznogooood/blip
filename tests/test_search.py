@@ -33,12 +33,14 @@ def test_client_search_hits_search_movie_endpoint() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         captured["path"] = request.url.path
         captured["query"] = request.url.params.get("query")
+        captured["page"] = request.url.params.get("page")
         return httpx.Response(200, json={"results": []})
 
     client = TMDBClient("key", transport=httpx.MockTransport(handler))
     client.search("dune", page=2)
     assert captured["path"].endswith("/search/movie")
     assert captured["query"] == "dune"
+    assert int(captured["page"]) == 2
 
 
 def test_service_search_maps_results() -> None:
@@ -114,6 +116,42 @@ def test_search_route_empty_results_shows_no_movies() -> None:
         assert "No movies to show." in response.text
     finally:
         app.dependency_overrides.clear()
+
+
+def test_search_pagination_preserves_query() -> None:
+    """Page 2+ returns the append fragment with Load More pointing to the
+    next page and preserving the query parameter."""
+    payload = {"results": [{"id": 8, "title": "Page Two"}], "page": 2, "total_pages": 5}
+    app.dependency_overrides[get_movie_service] = lambda: MovieService(
+        _SearchRecordingClient(payload)
+    )
+    try:
+        with TestClient(app) as client:
+            response = client.get("/movies?query=dune&page=2")
+        assert response.status_code == 200
+        assert "Page Two" in response.text
+        # Should NOT include the full-grid Refresh button (only on page 1).
+        assert "Refresh Cache" not in response.text
+        # Load More should point to page 3 and preserve the query.
+        assert 'query=dune' in response.text
+        assert 'page=3' in response.text
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_search_force_refresh_bypasses_cache() -> None:
+    """Force-refreshing a search skips the cache and calls the client again."""
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(bind=engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with factory() as session:
+        client = _SearchRecordingClient({"results": [{"id": 1, "title": "Dune"}]})
+        service = MovieService(client, cache=CacheService(session))
+        # First call populates the cache.
+        service.search("Dune")
+        # Second call with force_refresh bypasses cache → calls client again.
+        service.search("Dune", force_refresh=True)
+        assert len(client.calls) == 2
 
 
 def test_index_renders_search_box() -> None:
