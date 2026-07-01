@@ -90,12 +90,13 @@ If you want to override the image or build locally, update the `image` field or 
 
 ## Local Development
 
-For local development with Python, see [DEVELOPMENT.md](DEVELOPMENT.md).
+For local development with Python, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## Documentation
 
-- [DEVELOPMENT.md](DEVELOPMENT.md) — Local dev setup (venv)
-- [CLAUDE.md](CLAUDE.md) — Internal development notes
+- [CLAUDE.md](CLAUDE.md) — Agent rules and "playbook"
+- [AGANTS.md](CLAUDE.md) — Symlink of CLAUDE.md
+- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — Local dev setup (venv)
 - [docs/PRD.md](docs/PRD.md) — Product requirements and feature overview
 - [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) — Milestone roadmap
 - [docs/DECISIONS.md](docs/DECISIONS.md) — Architecture decision records
