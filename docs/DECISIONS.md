@@ -21,6 +21,7 @@ Index (grep to the ADR you need; don't read the whole file):
 - ADR-017 — Responsive top navigation
 - ADR-018 — HTMX v2 trigger compatibility
 - ADR-019 — Cross-tool agent instructions: single source via symlink
+- ADR-020 — Scheduled Radarr backlog search: in-app asyncio loop, random-phase runs
 
 ## ADR-001: Backend-first architecture
 
@@ -231,3 +232,16 @@ Decisions:
 
 - Do not maintain a separate `AGENTS.md` — keep it a symlink to avoid drift.
 - Edit instructions in `CLAUDE.md` only.
+
+## ADR-020: Scheduled Radarr backlog search
+
+Blip can trigger Radarr's `MissingMoviesSearch` on a Daily/Weekly schedule
+(default Off), selectable on the Settings page, since Radarr never re-searches
+its existing backlog on its own.
+
+Decisions:
+
+- **Mechanism:** one in-app `asyncio` task started in the FastAPI lifespan (single-process uvicorn — no `--workers`), no APScheduler/new dependency. Ticks every 60s; the sync Radarr HTTP call is offloaded via `asyncio.to_thread`. Gated by `SCHEDULER_ENABLED` (default true).
+- **Random phase:** each run fires at a random time within its period, re-randomized after every run — spreads load so many installs don't hammer Radarr/indexers at once.
+- **State:** a dedicated single-row `search_schedule` table (schedule + next/last run), not new `app_settings` columns. The app has no migrations (`create_all` only adds tables, never columns), so a new table applies cleanly on existing DBs.
+- **Two triggers:** the schedule and a manual "Run search now" button; both reuse `RadarrService.search_missing()`.

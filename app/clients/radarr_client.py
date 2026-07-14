@@ -56,6 +56,17 @@ class RadarrClient:
             response.raise_for_status()
             return response.json()
 
+    def command(self, name: str) -> dict:
+        """Trigger a Radarr command (e.g. ``MissingMoviesSearch``) and return it.
+
+        Radarr's ``POST /api/v3/command`` starts a named background task; the
+        response is the queued command record.
+        """
+        with self._client() as client:
+            response = client.post("/api/v3/command", json={"name": name})
+            response.raise_for_status()
+            return response.json()
+
     def _get(self, path: str) -> list[dict]:
         with self._client() as client:
             response = client.get(path)

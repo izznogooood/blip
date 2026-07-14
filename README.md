@@ -63,6 +63,24 @@ RADARR_DEFAULT_MINIMUM_AVAILABILITY=released
 
 **Note:** All configuration is optional at startup. You can configure Blip entirely through the Settings UI once the app is running.
 
+### Scheduled backlog search
+
+Radarr only searches for a movie **at the moment you add it**. It does *not* go
+back and re-check your existing library — a detail many people don't realise. So
+a movie you added before any release existed will sit there missing forever
+unless you remember to run *Search Missing Movies* yourself.
+
+Blip can do that for you. On the **Settings** page, set **Scheduled backlog
+search** to **Daily** or **Weekly** and Blip will trigger Radarr's
+`MissingMoviesSearch` on that cadence (**Off** by default). Each run fires at a
+*random time* within the period rather than a fixed instant — so if lots of
+people run Blip, they don't all hit Radarr and the indexers at once. There's
+also a **Run search now** button to trigger it on demand, plus a last-run /
+next-run line so you can see it working.
+
+This needs no extra setup beyond the Radarr connection above. To turn the
+background job off entirely (e.g. for tests), set `SCHEDULER_ENABLED=false`.
+
 
 ## Docker Compose Example
 

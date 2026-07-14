@@ -15,6 +15,9 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite:///./data/blip.db"
 
+    # Set false to skip starting the in-app background scheduler (e.g. tests).
+    scheduler_enabled: bool = True
+
     tmdb_api_key: str | None = None
 
     radarr_base_url: str | None = None

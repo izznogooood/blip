@@ -7,9 +7,11 @@ from sqlalchemy.pool import StaticPool
 from app.core.config import Settings
 from app.core.database import Base, get_session
 from app.main import app
+from app.models.search_schedule import SearchSchedule  # noqa: F401  registers table
 from app.models.settings import AppSettings  # noqa: F401  registers the table
+from app.services.search_schedule_service import SearchScheduleService
 from app.services.settings_service import SettingsService
-from app.web.settings_routes import get_settings_service
+from app.web.settings_routes import get_schedule_service, get_settings_service
 
 # A clean env config (no .env read) so tests don't depend on the developer's
 # ambient TMDB/Radarr environment variables.
@@ -45,8 +47,13 @@ def client():
         with factory() as s:
             yield SettingsService(s, env=_CLEAN_ENV)
 
+    def override_schedule_service():
+        with factory() as s:
+            yield SearchScheduleService(s)
+
     app.dependency_overrides[get_session] = override_session
     app.dependency_overrides[get_settings_service] = override_settings_service
+    app.dependency_overrides[get_schedule_service] = override_schedule_service
     try:
         with TestClient(app) as test_client:
             test_client._factory = factory  # expose for assertions
@@ -116,3 +123,55 @@ def test_radarr_options_error_preserves_defaults_as_hidden_inputs(
     assert resp.status_code == 200
     assert 'type="hidden"' in resp.text
     assert 'name="radarr_default_root_folder"' in resp.text
+
+
+def test_settings_page_renders_schedule_selector(client: TestClient) -> None:
+    page = client.get("/settings").text
+    assert 'name="radarr_search_schedule"' in page
+    assert "Scheduled backlog search" in page
+    assert "Run search now" in page
+
+
+def test_save_persists_schedule(client: TestClient) -> None:
+    client.post(
+        "/settings",
+        data={"radarr_search_schedule": "weekly"},
+        follow_redirects=False,
+    )
+    with client._factory() as s:
+        row = SearchScheduleService(s).get()
+    assert row.schedule == "weekly"
+    assert row.next_run_at is not None
+
+
+def test_run_search_now_reports_unconfigured(client: TestClient) -> None:
+    # Clean env → no Radarr configured → the manual run fails soft.
+    resp = client.post("/settings/run-search-now")
+    assert resp.status_code == 200
+    assert "not configured" in resp.text.lower()
+
+
+def test_run_search_now_triggers_when_configured(
+    client: TestClient, monkeypatch
+) -> None:
+    from app.schemas.settings import ResolvedSettings
+    from app.services.radarr_service import RadarrService
+
+    monkeypatch.setattr(
+        SettingsService,
+        "resolve",
+        lambda self: ResolvedSettings(
+            radarr_base_url="http://radarr", radarr_api_key="key"
+        ),
+    )
+    called: list[bool] = []
+    monkeypatch.setattr(
+        RadarrService, "search_missing", lambda self: called.append(True)
+    )
+
+    resp = client.post("/settings/run-search-now")
+    assert resp.status_code == 200
+    assert "triggered" in resp.text.lower()
+    assert called == [True]
+    with client._factory() as s:
+        assert SearchScheduleService(s).get().last_result == "ok"

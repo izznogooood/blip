@@ -97,6 +97,50 @@
       </div>
     </div>
 
+    {# --- Scheduled backlog search --- #}
+    <div class="rounded-md border border-slate-800 p-4">
+      <h2 class="text-sm font-semibold text-slate-200 mb-1">Scheduled backlog search</h2>
+      <p class="text-xs text-slate-400 mb-3">
+        Radarr only searches for a movie when you add it — it never revisits your
+        existing backlog. Run <em>Search Missing Movies</em> on a schedule so
+        releases that appear later still get picked up. Runs fire at a random time
+        within the period to avoid hammering indexers.
+      </p>
+
+      <label class="block text-sm font-medium text-slate-300 mb-1">Schedule</label>
+      <select
+        name="radarr_search_schedule"
+        class="w-full rounded-md bg-slate-800 border border-slate-700 px-3 py-2 text-sm"
+      >
+        {% for option in schedule_options %}
+        <option value="{{ option }}" {% if option == schedule_value %}selected{% endif %}>
+          {{ option | capitalize }}
+        </option>
+        {% endfor %}
+      </select>
+
+      <p class="mt-3 text-xs text-slate-400">
+        Last run:
+        <span class="text-slate-300">{{ schedule_last_run or "Never" }}</span>
+        {% if schedule_last_result %}<span class="text-slate-500">({{ schedule_last_result }})</span>{% endif %}
+        · Next run:
+        <span class="text-slate-300">{{ schedule_next_run or "—" }}</span>
+      </p>
+
+      <div class="mt-3 flex items-center gap-3">
+        <button
+          type="button"
+          hx-post="/settings/run-search-now"
+          hx-target="#run-search-result"
+          hx-swap="innerHTML"
+          class="rounded-md bg-slate-700 px-2.5 py-1 text-xs font-medium hover:bg-slate-600"
+        >
+          Run search now
+        </button>
+        <div id="run-search-result" class="text-xs text-slate-400"></div>
+      </div>
+    </div>
+
     <button
       type="submit"
       class="rounded-md bg-slate-100 text-slate-900 px-4 py-2 text-sm font-semibold hover:bg-white"
