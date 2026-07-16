@@ -56,15 +56,45 @@ class RadarrClient:
             response.raise_for_status()
             return response.json()
 
-    def command(self, name: str, **kwargs: str) -> dict:
-        """Trigger a Radarr command (e.g. ``MissingMoviesSearch``) and return it.
+    def search_movies(self, movie_ids: list[int]) -> dict:
+        """Tell Radarr to search for specific movies by their IDs.
 
-        Radarr's ``POST /api/v3/command`` starts a named background task; the
-        response is the queued command record. Extra keyword arguments are
-        merged into the request body (e.g. ``filterKey`` / ``filterValue``).
+        Wraps ``POST /api/v3/command`` with ``name: MoviesSearch``. Radarr's
+        own UI uses this endpoint (not ``MissingMoviesSearch``) for filtered
+        searches because the latter ignores unknown filter fields.
         """
         with self._client() as client:
-            response = client.post("/api/v3/command", json={"name": name, **kwargs})
+            response = client.post(
+                "/api/v3/command",
+                json={"name": "MoviesSearch", "movieIds": movie_ids},
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def get_missing_available_movies(self) -> list[dict]:
+        """Return library movies that are monitored, missing, and available.
+
+        A movie is *available* when Radarr considers it downloadable (its
+        release date has passed). ``hasFile == False`` ensures we skip
+        already-downloaded titles.
+        """
+        return [
+            m
+            for m in self.movies()
+            if m.get("monitored") is True
+            and m.get("hasFile") is False
+            and m.get("isAvailable") is True
+        ]
+
+    def command(self, name: str) -> dict:
+        """Trigger a Radarr command and return the queued command record.
+
+        Radarr's ``POST /api/v3/command`` starts a named background task.
+        Unknown fields are silently ignored by the server, so we only send
+        the ``name``.
+        """
+        with self._client() as client:
+            response = client.post("/api/v3/command", json={"name": name})
             response.raise_for_status()
             return response.json()
 

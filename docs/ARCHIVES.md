@@ -131,3 +131,14 @@ Goal: Redesign top navigation for desktop, tablet, and phone viewports while pre
 
 **Fix**: Replaced with Alpine `x-init="$nextTick(() => htmx.ajax('GET', '/movies?list=in_theaters', {target: '#movie-list', swap: 'innerHTML'}))"`. `$nextTick` defers the call until after Alpine finishes its DOM reconciliation.
 
+## Milestone 12: Fix missing-movies search filter — ✅
+
+Goal: Replace the broken `MissingMoviesSearch` command (which ignores `filterKey`/`filterValue`) with a two-step approach: query Radarr for monitored missing available movies, then search only those specific IDs.
+
+### Changes
+
+- **`app/clients/radarr_client.py`** — Added `search_movies(movie_ids)` (wraps `POST /api/v3/command` with `MoviesSearch` + explicit IDs) and `get_missing_available_movies()` (filters library for monitored + missing + available). Removed dead `filterKey`/`filterValue` kwargs from `command()`.
+- **`app/services/radarr_service.py`** — `search_missing()` now calls `get_missing_available_movies()` then `search_movies()` with the resulting IDs. Empty list → returns `{}` without sending a command.
+- **`tests/test_radarr_command.py`** — 7 tests covering client methods (search posts correct JSON, filter works, empty case) and service flow (filters by availability, skips unavailable, handles empty).
+- **`docs/DECISIONS.md`** — Added ADR-021: Radarr's command API ignores unknown fields; `MoviesSearch` with explicit IDs is the correct approach.
+

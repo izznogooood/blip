@@ -22,6 +22,7 @@ Index (grep to the ADR you need; don't read the whole file):
 - ADR-018 — HTMX v2 trigger compatibility
 - ADR-019 — Cross-tool agent instructions: single source via symlink
 - ADR-020 — Scheduled Radarr backlog search: in-app asyncio loop, random-phase runs
+- ADR-021 — Radarr missing-movies search: client-side filter with MoviesSearch
 
 ## ADR-001: Backend-first architecture
 
@@ -245,3 +246,24 @@ Decisions:
 - **Random phase:** each run fires at a random time within its period, re-randomized after every run — spreads load so many installs don't hammer Radarr/indexers at once.
 - **State:** a dedicated single-row `search_schedule` table (schedule + next/last run), not new `app_settings` columns. The app has no migrations (`create_all` only adds tables, never columns), so a new table applies cleanly on existing DBs.
 - **Two triggers:** the schedule and a manual "Run search now" button; both reuse `RadarrService.search_missing()`.
+
+## ADR-021: Radarr missing-movies search: client-side filter with MoviesSearch
+
+Radarr's ``POST /api/v3/command`` silently ignores unknown JSON fields. The
+``filterKey``/``filterValue`` parameters that some client libraries document
+were never implemented server-side — sending them has no effect.
+
+Radarr's own UI "Search All" on the Wanted → Missing page does not use
+``MissingMoviesSearch`` either. It filters client-side, then sends
+``MoviesSearch`` with explicit movie IDs.
+
+Decisions:
+
+- **Client-side filter:** fetch the full library (``GET /api/v3/movie``),
+  filter for ``monitored == true``, ``hasFile == false``, ``isAvailable == true``
+  in Python, then send ``MoviesSearch`` with the resulting IDs.
+- **``isAvailable`` as the gate:** a movie is available when its release date
+  has passed (Radarr computes this). Unavailable titles (announced, in-cinemas)
+  are skipped.
+- **Empty list → no command:** if no movies match, we don't send a
+  ``MoviesSearch`` command at all.

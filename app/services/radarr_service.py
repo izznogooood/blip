@@ -92,14 +92,17 @@ class RadarrService:
         return status_from_radarr(added)
 
     def search_missing(self) -> dict:
-        """Ask Radarr to search for all monitored, missing movies.
+        """Search for monitored, missing movies that are available for download.
 
-        Radarr only searches a movie when it is added; it never revisits the
-        existing backlog on its own. This triggers that library-wide search.
+        Radarr's ``MissingMoviesSearch`` command ignores unknown filter fields,
+        so we fetch the full library, filter for monitored + missing + available
+        on our side, then send ``MoviesSearch`` with explicit IDs.
         """
-        return self._client.command(
-            "MissingMoviesSearch", filterKey="status", filterValue="released"
-        )
+        movies = self._client.get_missing_available_movies()
+        if not movies:
+            return {}
+        ids = [m["id"] for m in movies]
+        return self._client.search_movies(ids)
 
     def quality_profiles(self) -> list[QualityProfile]:
         return [QualityProfile.from_radarr(p) for p in self._client.quality_profiles()]
