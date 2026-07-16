@@ -30,11 +30,14 @@ def test_search_missing_triggers_the_named_command() -> None:
     class _Stub:
         def __init__(self) -> None:
             self.called: str | None = None
+            self.kwargs: dict = {}
 
-        def command(self, name: str) -> dict:
+        def command(self, name: str, **kwargs: str) -> dict:
             self.called = name
+            self.kwargs = kwargs
             return {"name": name}
 
     stub = _Stub()
     RadarrService(stub).search_missing()
     assert stub.called == "MissingMoviesSearch"
+    assert stub.kwargs == {"filterKey": "status", "filterValue": "released"}

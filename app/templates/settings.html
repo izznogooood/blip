@@ -101,10 +101,11 @@
     <div class="rounded-md border border-slate-800 p-4">
       <h2 class="text-sm font-semibold text-slate-200 mb-1">Scheduled backlog search</h2>
       <p class="text-xs text-slate-400 mb-3">
-        Radarr only searches for a movie when you add it, and in the RSS feed it gets every 20min — it never revisits your
-        existing backlog. Run <em>Search Missing Movies</em> on a schedule so
-        releases that appear later still get picked up. Runs fire at a random time
-        within the period to avoid hammering indexers.
+        Radarr picks up new releases passively via RSS, but it never goes back and searches
+        for movies that were uploaded before they were added. This schedule re-runs that search
+        for <strong>released</strong> movies that are still missing — movies not yet released
+        are skipped to avoid wasted indexer queries. Runs fire at a random time within the
+        period to keep indexers happy.
       </p>
 
       <label class="block text-sm font-medium text-slate-300 mb-1">Schedule</label>

@@ -97,7 +97,9 @@ class RadarrService:
         Radarr only searches a movie when it is added; it never revisits the
         existing backlog on its own. This triggers that library-wide search.
         """
-        return self._client.command("MissingMoviesSearch")
+        return self._client.command(
+            "MissingMoviesSearch", filterKey="status", filterValue="released"
+        )
 
     def quality_profiles(self) -> list[QualityProfile]:
         return [QualityProfile.from_radarr(p) for p in self._client.quality_profiles()]
