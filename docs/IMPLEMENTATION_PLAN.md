@@ -49,7 +49,7 @@ ADRs: <new architectural choices → add an ADR to docs/DECISIONS.md>
 
 ## Handoff notes
 
-- Milestones 1–11 complete. Two post-milestone HTMX v2 bug fixes applied (commits `230d6b7`, `1fa924c`) — see ADR-018 in docs/DECISIONS.md for the rules and rationale.
+- Milestones 1–12 complete. Two post-milestone HTMX v2 bug fixes applied (commits `230d6b7`, `1fa924c`) — see ADR-018 in docs/DECISIONS.md for the rules and rationale.
 - Desktop genre controls now match the mobile pattern: each element owns its own HTMX attributes (`hx-get`, `hx-trigger`, `hx-include`); avoid the `from:` modifier in HTMX v2.
 - Title search: `GET /movies?query=` is a third mode of the movies endpoint (precedence query > genre_id > list), reusing the grid/Load More/modal/add pipeline. Backed by `TMDBClient.search` → `/search/movie` and `MovieService.search`. Search box in desktop nav + mobile drawer.
 - Radarr search: `search_missing()` now fetches the library, filters for monitored+missing+available, then sends `MoviesSearch` with explicit IDs (ADR-021). `filterKey`/`filterValue` removed from `command()` — Radarr silently ignored them.
