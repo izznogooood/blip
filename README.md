@@ -4,6 +4,20 @@
 
 Blip is a LAN-hosted movie discovery app for browsing movie lists and adding selected movies directly to Radarr.
 
+## Features
+
+- **Movie discovery** — browse TMDB lists: In Theaters, Upcoming, New at Home, Top Rated, and more
+- **Genre filtering** — filter movies by genre with a dropdown
+- **Title search** — find movies by name
+- **Radarr integration** — see each movie's Radarr status (Missing, Downloaded, etc.) and add movies with one click
+- **Add + Search** — add a movie to Radarr and immediately trigger a download search
+- **Synopsis & trailers** — click a poster for details, watch trailers on YouTube
+- **Scheduled backlog search** — periodically re-search for released movies still missing in Radarr
+- **Settings page** — configure TMDB, Radarr, quality profiles, and root folders from the UI
+- **Responsive design** — works on desktop, tablet, and phone
+- **SQLite caching** — TMDB responses cached locally for fast loading
+- **Docker ready** — single `docker run` or `docker compose up` to get started
+
 Stack: Python 3.12+, FastAPI, SQLite, HTMX, Alpine.js, Tailwind CSS.
 
 ## Quick Start with Docker

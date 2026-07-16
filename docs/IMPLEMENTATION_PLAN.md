@@ -17,12 +17,43 @@ Build in small vertical slices. One milestone per session. Keep the app runnable
 | 9. Polish and tests | ❌ Scrapped |
 | 10. Genre dropdown | ✅ Complete |
 | 11. Responsive Top Navigation | ✅ Complete |
+| 12. Fix missing-movies search filter | ⬜ |
 
 Status: ⬜ Not started · 🚧 In progress · ✅ Complete · ❌ Scrapped
 
 ## Active milestone
 
-None active — copy the template below to start one.
+## Milestone 12: Fix missing-movies search filter — ⬜
+Goal: Replace the broken `MissingMoviesSearch` command (which ignores `filterKey`/`filterValue`) with a two-step approach: query Radarr for monitored missing available movies, then search only those specific IDs.
+
+### Context
+
+Commit `cf3cdff` added `filterKey="status", filterValue="released"` to `MissingMoviesSearch`, but this does **not work**. Investigation revealed:
+
+- The Radarr v3 `CommandResource` schema (OpenAPI spec) has **no** `filterKey`/`filterValue` fields. The command body only accepts `name`, `sendUpdatesToClient`, `updateScheduledTask`, `completionMessage`, `trigger`, and `manualRun`.
+- A third-party Go client library (`SkYNewZ/radarr`) defines `filterKey`/`filterValue` as top-level JSON fields, but its `MissingMoviesSearch` function is a **stub** (`return nil`) — it was never implemented server-side. The filter concept was never merged into Radarr's command endpoint.
+- When we send `{"name": "MissingMoviesSearch", "filterKey": "status", "filterValue": "released"}`, Radarr silently ignores the unknown fields and runs an **unfiltered** search of all monitored missing movies.
+- Radarr's own UI "Search All" button on the Wanted → Missing page does **not** use `MissingMoviesSearch` either. It sends specific movie IDs via `MoviesSearch` after filtering the list client-side.
+- `isAvailable` is the correct field for "can this movie be downloaded?" — a movie is available when its `physicalRelease`/`digitalRelease` date has passed, or 3 months after `inCinemas` if no release date exists.
+
+Plan:
+1. Add `RadarrClient.search_movies(movie_ids)` — wraps `POST /api/v3/command` with `{"name": "MoviesSearch", "movieIds": [...]}`.
+2. Add `RadarrClient.get_missing_available_movies()` — fetches `GET /api/v3/movie`, filters for `monitored == true`, `hasFile == false`, and `isAvailable == true`.
+3. Update `RadarrService.search_missing()` to call the two new methods: get filtered IDs, then send `MoviesSearch`.
+4. Remove the dead `filterKey`/`filterValue` kwargs from `command()` and `search_missing()`.
+5. Update `tests/test_radarr_command.py` to cover the new flow.
+
+Files:
+- `app/clients/radarr_client.py`
+- `app/services/radarr_service.py`
+- `tests/test_radarr_command.py`
+
+Tests:
+- `test_search_missing_filters_by_availability` — verify only monitored+missing+available movies are searched
+- `test_search_missing_skips_unavailable_movies` — verify announced/in-cinemas movies are excluded
+- `test_search_missing_handles_empty_result` — no available missing movies → no command sent
+
+ADRs: Add ADR to `docs/DECISIONS.md` noting that Radarr's command API ignores unknown fields and `MoviesSearch` with explicit IDs is the correct way to do filtered searches.
 
 ## Adding a milestone
 

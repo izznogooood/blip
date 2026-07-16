@@ -17,6 +17,7 @@ Jinja2 + HTMX + Alpine.js + Tailwind (CDN). Docker Compose is the run path.
 ## Rules
 
 - One milestone at a time; app stays runnable after each. KISS.
+- Keep the ## Features list in README.md up to date if adding a new feature.
 - No React/Vue/Svelte/Next/Vite/npm pipeline.
 - Modern typing (`str | None`, `list[str]`). Thin routes; HTTP in `clients/`, logic in `services/`.
 - Never expose API keys to browser HTML or logs.
