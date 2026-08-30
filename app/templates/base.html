@@ -92,6 +92,7 @@
           hx-target="#movie-list"
           hx-swap="innerHTML"
           hx-trigger="keyup[this.value.trim().length > 1] changed delay:400ms, search"
+          hx-indicator="#list-loading"
           class="w-full rounded-md bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-slate-500 focus:outline-none"
         >
       </div>
@@ -110,6 +111,7 @@
           hx-get="/movies?list={{ id }}"
           hx-target="#movie-list"
           hx-swap="innerHTML"
+          hx-indicator="#list-loading"
         >
           {{ label }}
         </button>
@@ -128,6 +130,7 @@
           hx-swap="innerHTML"
           hx-trigger="change[this.value != '']"
           hx-include="#genre-select-mobile, #sort-checkbox-mobile"
+          hx-indicator="#list-loading"
           class="w-full rounded-md bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-200 focus:border-slate-500 focus:outline-none"
         >
           <option value="">All Genres</option>
@@ -147,6 +150,7 @@
             hx-swap="innerHTML"
             hx-trigger="change"
             hx-include="#genre-select-mobile, #sort-checkbox-mobile"
+            hx-indicator="#list-loading"
             class="rounded border-slate-600 bg-slate-800 text-amber-400 focus:ring-0 focus:ring-offset-0"
             :disabled="!activeGenre"
           >

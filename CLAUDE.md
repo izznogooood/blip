@@ -23,6 +23,8 @@ Jinja2 + HTMX + Alpine.js + Tailwind (CDN). Docker Compose is the run path.
 - Never expose API keys to browser HTML or logs.
 - HTMX v2 trigger filters `[expr]` must come immediately after the event name, before modifiers like `from:`. Prefer placing triggers directly on the element and omitting `from:`.
 - Avoid `hx-trigger="load"` when HTMX is deferred alongside Alpine — the `setTimeout(0)` callback can be swallowed by Alpine's initialization. Use `x-init="$nextTick(() => htmx.ajax(...))"` instead.
+- `htmx.ajax()`'s context object has no `indicator` key (only `source`, `event`, `handler`, `headers`, `values`, `target`, `swap`, `select`) — it's silently ignored. For a programmatic call that needs an indicator, toggle the `htmx-request` class manually and remove it in `.finally()` on the returned promise.
+- Tailwind's CDN script injects its stylesheet after `app.css`, so a Tailwind utility class (e.g. `flex`) can silently beat a same-specificity `app.css` rule (e.g. `display: none`) on the same element. Use `!important`, as `[x-cloak]` already does.
 
 ## Workflow
 

@@ -8,6 +8,7 @@
     hx-get="/movies?{% if query %}query={{ query|urlencode }}{% elif genre_id %}genre_id={{ genre_id }}{% else %}list={{ list_id }}{% endif %}{% if sort_by_rating %}&sort_by_rating=true{% endif %}&page={{ page_data.page + 1 }}"
     hx-target="#movie-cards"
     hx-swap="beforeend"
+    hx-indicator="#list-loading"
   >
     Load More
   </button>
