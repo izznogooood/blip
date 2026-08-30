@@ -46,6 +46,8 @@ Blip can be configured in two ways:
 1. **Environment variables** — set when starting the container
 2. **Settings UI** — configure inside the app after it's running (overrides environment variables)
 
+**Note:** All configuration is optional at startup. You can configure Blip entirely through the Settings UI once the app is running.
+
 ### Getting API Keys
 
 **TMDB API Key** (free for private use):
@@ -74,8 +76,6 @@ RADARR_DEFAULT_ROOT_FOLDER=/mnt/movies
 RADARR_DEFAULT_QUALITY_PROFILE_ID=1
 RADARR_DEFAULT_MINIMUM_AVAILABILITY=released
 ```
-
-**Note:** All configuration is optional at startup. You can configure Blip entirely through the Settings UI once the app is running.
 
 ### Scheduled backlog search
 
