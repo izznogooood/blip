@@ -2,16 +2,15 @@ from collections.abc import Callable
 from datetime import date, timedelta
 
 from app.clients.tmdb_client import TMDBClient
-from app.schemas.movie import Genre, Movie, MovieDetail, MoviePage
+from app.schemas.movie import Genre, MovieDetail, MoviePage
 from app.services.cache_service import (
     DETAILS_CACHE_TTL,
     LIST_CACHE_TTL,
     CacheService,
 )
 
-# The "Top Rated" list is not a TMDB chart — it is the highest-rated movies
-# across all of Blip's *other* lists (see ADR-008). Its id is referenced by the
-# aggregation logic so it can exclude itself from its own sources.
+# "Top Rated" maps directly to TMDB's own `/movie/top_rated` chart (see
+# ADR-008) — a weighted all-time rating, not scoped to current releases.
 TOP_RATED_LIST_ID = "top_rated"
 
 # v1 movie lists, in tab display order: (list id, human label).
@@ -40,8 +39,8 @@ _UPCOMING_AT_HOME_WINDOW_DAYS = 180
 # behaviour need one; lists without an entry render no caption.
 LIST_DESCRIPTIONS: dict[str, str] = {
     TOP_RATED_LIST_ID: (
-        "The highest-rated movies across all of Blip's other lists — "
-        "a curated snapshot, not a full TMDB chart."
+        "TMDB's all-time top-rated chart — spans any release year, not "
+        "just current releases."
     ),
 }
 
@@ -70,8 +69,6 @@ class MovieService:
         bypasses the cache and refreshes the stored payload (used by the manual
         per-list refresh action).
         """
-        if list_id == TOP_RATED_LIST_ID:
-            return self._top_rated(force_refresh=force_refresh)
         payload = self._fetch_list(list_id, page, force_refresh=force_refresh)
         return MoviePage.from_tmdb(payload)
 
@@ -140,7 +137,7 @@ class MovieService:
         return MovieDetail.from_tmdb(payload)
 
     def _fetch_list(self, list_id: str, page: int, *, force_refresh: bool) -> dict:
-        """Return the raw TMDB payload for a (non-aggregate) list, via the cache."""
+        """Return the raw TMDB payload for a list, via the cache."""
         if list_id == "in_theaters":
             fetch: Callable[[], dict] = lambda: self._client.now_playing(page=page)
         elif list_id == "upcoming_theatrical":
@@ -153,6 +150,8 @@ class MovieService:
             fetch = lambda: self._client.discover(
                 page=page, params=self._upcoming_at_home_params()
             )
+        elif list_id == "top_rated":
+            fetch = lambda: self._client.top_rated(page=page)
         else:
             raise UnknownListError(list_id)
         return self._cached(f"tmdb:list:{list_id}:{page}", fetch, force_refresh)
@@ -174,29 +173,6 @@ class MovieService:
         if self._cache is not None:
             self._cache.set(key, payload, ttl)
         return payload
-
-    def _top_rated(self, *, force_refresh: bool = False) -> MoviePage:
-        """Assemble the highest-rated movies across all of Blip's other lists.
-
-        Pulls page 1 of every other list in ``MOVIE_LISTS``, dedupes by movie id,
-        and sorts by TMDB rating (highest first). Adding a new list to the
-        registry automatically feeds into this view.
-
-        Top Rated is a single curated page with no Load More: its pool is bounded
-        by page 1 of each source list, so the whole set is shown at once.
-        """
-        source_ids = [
-            list_id for list_id, _ in MOVIE_LISTS if list_id != TOP_RATED_LIST_ID
-        ]
-
-        unique: dict[int, Movie] = {}
-        for source_id in source_ids:
-            page = self.movies(source_id, page=1, force_refresh=force_refresh)
-            for movie in page.movies:
-                unique.setdefault(movie.id, movie)
-
-        ranked = sorted(unique.values(), key=lambda m: m.rating or 0.0, reverse=True)
-        return MoviePage(movies=ranked, page=1, total_pages=1)
 
     @staticmethod
     def _new_at_home_params() -> dict:

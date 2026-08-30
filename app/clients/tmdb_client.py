@@ -39,6 +39,12 @@ class TMDBClient:
             "/movie/upcoming", {"page": page, "region": self._region}
         )
 
+    def top_rated(self, page: int = 1) -> dict:
+        """Return the TMDB "top rated" payload for ``page``."""
+        return self._get(
+            "/movie/top_rated", {"page": page, "region": self._region}
+        )
+
     def movie_details(self, movie_id: int) -> dict:
         """Return the TMDB details payload for ``movie_id``.
 

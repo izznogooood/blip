@@ -84,11 +84,11 @@ Map the five v1 lists to TMDB endpoints as follows:
 | Upcoming Theatrical | `/movie/upcoming` | region `US` |
 | New at Home | `/discover/movie` | `with_release_type=4\|5`, `release_date.gte=today-90d`, `release_date.lte=today`, `sort_by=primary_release_date.desc` |
 | Upcoming at Home | `/discover/movie` | `with_release_type=4\|5`, `release_date.gte=today`, `release_date.lte=today+180d`, `sort_by=primary_release_date.asc` |
-| Top Rated | aggregate of all other lists | page 1 of every other list, deduped by id, sorted by TMDB rating desc; single curated page, no Load More |
+| Top Rated | `/movie/top_rated` | region `US`; TMDB's own weighted all-time rating chart, paginated like any other list |
 
 “At home” is approximated using digital or physical release type and a date window.
 
-Top Rated is computed from the list registry rather than TMDB’s global top rated chart.
+Top Rated calls TMDB's own chart directly — it spans any release year by design, not just current releases. (Earlier versions computed it as an aggregate of the other lists' page 1; abandoned because the "at home" date filters match on re-release dates, not original release dates, so old movies leaked in unpredictably.)
 
 ## ADR-009: TMDB response caching — generic key-value table, epoch TTL
 
@@ -204,7 +204,7 @@ Add a genre dropdown alongside the existing list tabs.
 Decisions:
 - Genres are fetched live from TMDB (`/genre/movie/list`) on page load and cached 24h.
 - Genre discovery uses `/discover/movie` with `with_genres=<id>`, a 180-day lookback window, and `sort_by=primary_release_date.desc`.
-- Genres are not added to `MOVIE_LISTS` — they are a separate browsing dimension and do not pollute the Top Rated aggregation.
+- Genres are not added to `MOVIE_LISTS` — they are a separate browsing dimension, distinct from the fixed list registry (ADR-008).
 - The dropdown uses Alpine.js for local state (active tab vs active genre) and HTMX for server requests via `htmx.ajax()`.
 - Genre name is looked up server-side from the cached genre list for the grid caption.
 - Load More preserves the `genre_id` query parameter.

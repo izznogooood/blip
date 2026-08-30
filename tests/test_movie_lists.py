@@ -27,6 +27,10 @@ class _RecordingClient:
         self.calls.append(("upcoming", {"page": page}))
         return self.payload
 
+    def top_rated(self, page: int = 1) -> dict:
+        self.calls.append(("top_rated", {"page": page}))
+        return self.payload
+
     def discover(self, page: int = 1, params: dict | None = None) -> dict:
         self.calls.append(("discover", {"page": page, **(params or {})}))
         return self.payload
@@ -35,8 +39,6 @@ class _RecordingClient:
         return {"genres": [{"id": 28, "name": "Action"}, {"id": 53, "name": "Thriller"}]}
 
 
-# "top_rated" is excluded — it is an aggregate of the other lists, not a single
-# TMDB endpoint (see ADR-008 and test_top_rated_* below).
 @pytest.mark.parametrize(
     "list_id,expected_endpoint",
     [
@@ -44,6 +46,7 @@ class _RecordingClient:
         ("upcoming_theatrical", "upcoming"),
         ("new_at_home", "discover"),
         ("upcoming_at_home", "discover"),
+        ("top_rated", "top_rated"),
     ],
 )
 def test_each_list_dispatches_to_expected_endpoint(list_id, expected_endpoint) -> None:
@@ -58,62 +61,21 @@ def test_unknown_list_raises() -> None:
         MovieService(_RecordingClient()).movies("nope")
 
 
-class _MultiListClient:
-    """Returns a distinct movie per endpoint so aggregation can be observed."""
-
-    def now_playing(self, page: int = 1) -> dict:
-        return {"results": [{"id": 1, "title": "A", "vote_average": 6.0}]}
-
-    def upcoming(self, page: int = 1) -> dict:
-        return {"results": [{"id": 2, "title": "B", "vote_average": 9.0}]}
-
-    def discover(self, page: int = 1, params: dict | None = None) -> dict:
-        # id 1 also appears in now_playing — must be deduped, not double-counted.
-        return {
-            "results": [
-                {"id": 1, "title": "A", "vote_average": 6.0},
-                {"id": 3, "title": "C", "vote_average": 7.5},
-            ]
-        }
-
-
-def test_top_rated_aggregates_dedupes_and_sorts_other_lists() -> None:
-    page = MovieService(_MultiListClient()).movies("top_rated")
-    # Highest rating first, id 1 appears once despite being in two source lists.
-    assert [m.id for m in page.movies] == [2, 3, 1]
-
-
-def test_top_rated_is_a_single_page_with_no_load_more() -> None:
-    # Even with many movies, Top Rated shows the whole curated pool at once.
-    class _ManyClient:
-        def now_playing(self, page: int = 1) -> dict:
-            return {
-                "results": [
-                    {"id": i, "title": str(i), "vote_average": float(i)}
-                    for i in range(25)
-                ]
-            }
-
-        def upcoming(self, page: int = 1) -> dict:
-            return {"results": []}
-
-        def discover(self, page: int = 1, params: dict | None = None) -> dict:
-            return {"results": []}
-
-    page = MovieService(_ManyClient()).movies("top_rated")
-    assert len(page.movies) == 25
-    assert page.has_more is False
-
-
-def test_top_rated_route_shows_caption_and_no_load_more() -> None:
+def test_top_rated_route_shows_caption_and_load_more_when_more_pages() -> None:
+    payload = {
+        "results": [{"id": 1, "title": "A", "vote_average": 9.0}],
+        "page": 1,
+        "total_pages": 2,
+    }
     app.dependency_overrides[get_movie_service] = lambda: MovieService(
-        _MultiListClient()
+        _RecordingClient(payload)
     )
     try:
         with TestClient(app) as client:
             response = client.get("/movies?list=top_rated")
-        assert "highest-rated movies across all of Blip" in response.text
-        assert "Load More" not in response.text
+        assert "all-time top-rated chart" in response.text
+        assert 'id="load-more"' in response.text
+        assert "page=2" in response.text
     finally:
         app.dependency_overrides.clear()
 
