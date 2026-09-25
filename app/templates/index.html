@@ -14,15 +14,9 @@
        box could render below the fold. Sticky keeps it centered in the
        current viewport instead as the page scrolls. #}
     <div id="list-loading"
-         class="htmx-indicator absolute inset-0 z-10 flex items-start justify-center bg-slate-900/80 backdrop-blur-sm"
-         x-data="{ quips: ['Beaming down the reels, Scotty…', 'Waking up Radarr…',
-                            'Rewinding the trailers…', 'Consulting the algorithm overlords…',
-                            'Warping through TMDB…', 'Convincing Radarr to pick up the phone…'],
-                    i: 0 }"
-         x-init="setInterval(() => i = (i + 1) % quips.length, 1800)">
-      <div class="sticky top-1/2 -translate-y-1/2 flex flex-col items-center gap-3">
-        <div class="h-8 w-8 animate-spin rounded-full border-4 border-slate-700 border-t-amber-400"></div>
-        <p class="text-slate-400 text-sm loading-dots" x-text="quips[i]"></p>
+         class="htmx-indicator absolute inset-0 z-10 flex items-start justify-center bg-slate-900/80 backdrop-blur-sm">
+      <div class="sticky top-1/2 -translate-y-1/2">
+        {% include "partials/_spinner.html" %}
       </div>
     </div>
 
@@ -41,6 +35,16 @@
              .finally(() => ind.classList.remove('htmx-request'));
          })">
     </div>
+  </div>
+
+  {# Modal loading indicator: a full-screen backdrop that appears the instant a
+     poster is clicked, so the round trip to TMDB + Radarr reads as "working"
+     rather than "broken". Sibling of #modal (not a descendant) so the modal's
+     innerHTML swap can't wipe it. z-40 sits above the grid but below the modal
+     (z-50), so the swapped-in modal still paints on top. #}
+  <div id="modal-loading"
+       class="htmx-indicator fixed inset-0 z-40 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
+    {% include "partials/_spinner.html" %}
   </div>
 
   {# Synopsis modal mount point: poster clicks load partials/movie_modal.html

@@ -1,0 +1,15 @@
+{# Shared spinner body: rotating ring + rotating quip. Included inside a
+   positioned .htmx-indicator wrapper that supplies the backdrop and the
+   centering — see #list-loading and #modal-loading in index.html. #}
+<div
+  class="flex flex-col items-center gap-3"
+  x-data="{ quips: ['Beaming down the reels, Scotty…', 'Waking up Radarr…',
+                   'Rewinding the trailers…', 'Consulting the algorithm overlords…',
+                   'Warping through TMDB…', 'Convincing Radarr to pick up the phone…',
+                   'Finding the popcorn…'],
+           i: 0 }"
+  x-init="setInterval(() => i = (i + 1) % quips.length, 1800)"
+>
+  <div class="h-8 w-8 animate-spin rounded-full border-4 border-slate-700 border-t-amber-400"></div>
+  <p class="text-slate-400 text-sm loading-dots" x-text="quips[i]"></p>
+</div>

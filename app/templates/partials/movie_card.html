@@ -7,13 +7,16 @@
 } %}
 <article id="movie-card-{{ movie.id }}"{% if oob %} hx-swap-oob="true"{% endif %} class="bg-slate-800 rounded-lg overflow-hidden shadow ring-1 ring-slate-700/50 flex flex-col">
   {# Poster opens the synopsis modal (PRD §10): HTMX loads the modal partial
-     into the shared #modal container. #}
+     into the shared #modal container. #modal-loading covers the wait — the
+     route fans out to TMDB (details) and Radarr (status, quality profiles),
+     which can take seconds on a cold cache. #}
   <button
     type="button"
     class="relative block aspect-[2/3] w-full bg-slate-700 text-left cursor-pointer"
     hx-get="/movies/{{ movie.id }}/modal"
     hx-target="#modal"
     hx-swap="innerHTML"
+    hx-indicator="#modal-loading"
     aria-label="View details for {{ movie.title }}"
   >
     {% if movie.poster_url %}
